@@ -224,6 +224,20 @@ const backupSchema = z
         code: "custom",
         message: "Duplicate recording identifiers",
       });
+    // Check the decoded size before atob() allocates any audio buffers.
+    // Imports must respect the same 30 MiB storage budget as recordings.
+    const decodedSize = (data: string) =>
+      Math.floor((data.length * 3) / 4) -
+      (data.endsWith("==") ? 2 : data.endsWith("=") ? 1 : 0);
+    const totalBytes = backup.clips.reduce(
+      (total, clip) => total + decodedSize(clip.data),
+      0,
+    );
+    if (totalBytes > 30 * 1024 * 1024)
+      context.addIssue({
+        code: "custom",
+        message: "Recording backup exceeds the 30 MiB audio limit",
+      });
   });
 export async function exportBackup(s: State) {
   const clips = await getClips();
