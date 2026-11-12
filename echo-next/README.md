@@ -58,3 +58,7 @@ Migration policy: IndexedDB's `upgrade` callback creates schema 1. Future versio
 See [validation report](docs/VALIDATION.md) for executed checks and physical-device requirements. Browser microphone tests use Chromium's synthetic capture device, not a physical microphone. Automated speech tests verify adapter behavior; they do not establish audible output quality.
 
 AI voice cloning is not implemented: the UI shows an honest unavailable state and the provider contract is isolated for future integration. See [offline inference assessment](docs/AI-VOICE.md). No AI model is bundled. Physical-device Android speech, recording, permissions, audio routing, TalkBack, backgrounding, thermal behavior and OEM compatibility require verification before release. No iOS project or store deployment is included.
+
+## GitHub automation
+
+See the [repository README](../README.md) for Pages setup, CI runs and APK artifact downloads. Deploy with `VITE_BASE_PATH=/ECHO-NEXT-/`; ordinary web and Android builds keep `/`. Fragment routes such as `#library` support reloads and browser history without server rewrite rules.

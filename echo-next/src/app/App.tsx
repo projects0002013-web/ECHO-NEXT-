@@ -102,11 +102,17 @@ function Modal({
     </dialog>
   );
 }
+function readRoute(): Page {
+  const route = location.hash.slice(1);
+  return ["home", "communicate", "voice", "library", "settings"].includes(route)
+    ? (route as Page)
+    : "home";
+}
 export default function App() {
   const [state, setState] = useState<State>(initialState),
     [ready, setReady] = useState(false),
     [fatal, setFatal] = useState("");
-  const [page, setPage] = useState<Page>("home"),
+  const [page, setPage] = useState<Page>(readRoute),
     [text, setText] = useState(""),
     [query, setQuery] = useState(""),
     [category, setCategory] = useState(""),
@@ -253,7 +259,13 @@ export default function App() {
   ) {
     update((v) => ({ ...v, settings: { ...v.settings, [key]: value } }));
   }
+  useEffect(() => {
+    const navigate = () => setPage(readRoute());
+    window.addEventListener("hashchange", navigate);
+    return () => window.removeEventListener("hashchange", navigate);
+  }, []);
   function go(next: Page) {
+    location.hash = next;
     setPage(next);
     setQuery("");
     setCategory("");
@@ -541,7 +553,7 @@ export default function App() {
     );
   return (
     <div className={`app ${s.cardSize}`}>
-      <a className="skip-link" href="#main-content">
+      <a className="skip-link" href="#main-content" onClick={event => {event.preventDefault(); document.getElementById("main-content")?.focus();}}>
         {t("Skip to content", "Перейти к содержимому")}
       </a>
       <aside
@@ -614,7 +626,7 @@ export default function App() {
             {t("Local storage", "На устройстве")}
           </span>
         </header>
-        <main id="main-content">
+        <main id="main-content" tabIndex={-1}>
           <div className="page-heading">
             <div>
               <div className="eyebrow">

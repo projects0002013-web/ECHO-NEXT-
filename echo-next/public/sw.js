@@ -1,11 +1,11 @@
-const CACHE = "echo-shell-v1";
+/* CONFIG is injected by scripts/cache.mjs into the production worker. */
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
-      .open(CACHE)
-      .then((c) => c.addAll(["/", "/icon.svg", "/manifest.webmanifest"])),
+      .open(CONFIG.cache)
+      .then((cache) => cache.addAll(CONFIG.assets))
+      .then(() => self.skipWaiting()),
   );
-  self.skipWaiting();
 });
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -13,33 +13,33 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k.startsWith("echo-shell-") && k !== CACHE).map((k) => caches.delete(k)),
+          keys
+            .filter((k) => k.startsWith(CONFIG.prefix) && k !== CONFIG.cache)
+            .map((k) => caches.delete(k)),
         ),
       )
       .then(() => self.clients.claim()),
   );
 });
 self.addEventListener("fetch", (event) => {
-  const req = event.request;
-  if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin)
+  const request = event.request,
+    url = new URL(request.url);
+  if (
+    request.method !== "GET" ||
+    url.origin !== self.location.origin ||
+    !url.pathname.startsWith(CONFIG.base)
+  )
     return;
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        if (res.ok) {
-          const copy = res.clone();
-          void caches.open(CACHE).then((c) => c.put(req, copy));
-        }
-        return res;
-      })
-      .catch(async () => {
-        const cached = await caches.match(req);
-        if (cached) return cached;
-        if (req.mode === "navigate") {
-          const shell = await caches.match("/");
-          if (shell) return shell;
-        }
-        return Response.error();
-      }),
+    fetch(request).catch(async () => {
+      const cache = await caches.open(CONFIG.cache);
+      return (
+        (await cache.match(request)) ||
+        (request.mode === "navigate"
+          ? await cache.match(CONFIG.base + "index.html")
+          : null) ||
+        Response.error()
+      );
+    }),
   );
 });

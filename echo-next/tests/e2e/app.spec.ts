@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test("phrase lifecycle, persistence, favorites, theme, language and backup", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("./");
   await expect(
     page.getByRole("heading", { name: "Make yourself heard." }),
   ).toBeVisible();
@@ -65,7 +65,7 @@ test("phrase lifecycle, persistence, favorites, theme, language and backup", asy
   ).toHaveCount(0);
 });
 test("category creation, rename and deletion", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("./");
   await page.getByRole("button", { name: "Library", exact: true }).click();
   await page.getByRole("button", { name: "New category", exact: true }).click();
   await page
@@ -102,7 +102,7 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
   context,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("./");
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
@@ -127,6 +127,7 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
     path: "test-results/mobile-voice.png",
     fullPage: true,
   });
+  await page.getByRole("button", { name: "Home", exact: true }).click();
   await context.setOffline(true);
   await page.reload();
   await expect(
@@ -135,7 +136,7 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
 });
 
 test("basic accessibility across all screens and dialog", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("./");
   for (const label of [
     "Home",
     "Communicate",
@@ -167,7 +168,7 @@ test("browser recording, playback, persistence and backup restore", async ({
   context,
 }) => {
   await context.grantPermissions(["microphone"]);
-  await page.goto("/");
+  await page.goto("./");
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   await page.getByLabel("Recording name").fill("Personal greeting");
   await page
@@ -221,7 +222,7 @@ test("browser recording, playback, persistence and backup restore", async ({
 });
 test("dark theme contrast and desktop layout", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/");
+  await page.goto("./");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Dark", exact: true }).click();
   for (const label of [
@@ -247,4 +248,27 @@ test("dark theme contrast and desktop layout", async ({ page }) => {
     path: "test-results/desktop-dark.png",
     fullPage: true,
   });
+});
+
+test("deep links, browser history and first-load offline assets", async ({
+  page,
+  context,
+}) => {
+  await page.goto("./#library");
+  await expect(
+    page.getByRole("heading", { name: "Library", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  await page.goBack();
+  await expect(
+    page.getByRole("heading", { name: "Library", exact: true }),
+  ).toBeVisible();
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await context.setOffline(true);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Library", exact: true }),
+  ).toBeVisible();
 });
