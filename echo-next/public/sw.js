@@ -33,7 +33,7 @@ self.addEventListener("fetch", (event) => {
     // Hashed Vite assets are immutable. Serve their precached response
     // immediately, so an offline reload never races a failed network fetch.
     if (url.pathname.startsWith(CONFIG.base + "assets/")) {
-      const cachedAsset = await cache.match(request, { ignoreSearch: true });
+      const cachedAsset = await cache.match(url.pathname, { ignoreSearch: true, ignoreVary: true });
       if (cachedAsset) return cachedAsset;
     }
     // Navigations remain network-first to allow fresh app shell updates.
