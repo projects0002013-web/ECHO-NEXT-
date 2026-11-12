@@ -113,6 +113,27 @@ describe("local communication data", () => {
       ),
     ).toThrow();
   });
+  it("rejects oversized audio backups without replacing user data", async () => {
+    const before = initialState();
+    before.phrases[0].text = "Keep this phrase";
+    await saveState(before);
+    // 30 MiB decoded audio limit: 42 million base64 characters exceed it.
+    const oversized = "A".repeat(42 * 1024 * 1024);
+    const payload = JSON.stringify({
+      format: "echo-backup",
+      state: initialState(),
+      clips: [{
+        id: "oversized",
+        name: "Too large",
+        type: "audio/mp4",
+        data: oversized,
+        createdAt: 1,
+      }],
+    });
+    await expect(restoreBackup(payload)).rejects.toThrow();
+    expect((await loadState()).phrases[0].text).toBe("Keep this phrase");
+    expect(await getClips()).toHaveLength(0);
+  });
   it("keeps saved data intact after rejected import", async () => {
     await saveState(initialState());
     await expect(restoreBackup("{}")).rejects.toThrow();
