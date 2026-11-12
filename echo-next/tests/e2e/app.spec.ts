@@ -106,6 +106,10 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
+  // ready means an active worker exists, but it may not yet control the page.
+  await expect.poll(() => page.evaluate(
+    () => Boolean(navigator.serviceWorker.controller),
+  )).toBe(true);
   await page.reload();
   for (const label of [
     "Home",
@@ -266,6 +270,10 @@ test("deep links, browser history and first-load offline assets", async ({
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
+  // ready means an active worker exists, but it may not yet control the page.
+  await expect.poll(() => page.evaluate(
+    () => Boolean(navigator.serviceWorker.controller),
+  )).toBe(true);
   await context.setOffline(true);
   await page.reload();
   await expect(
