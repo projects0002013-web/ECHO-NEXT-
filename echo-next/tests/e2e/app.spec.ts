@@ -1,5 +1,18 @@
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+function logOfflineErrors(page: Page) {
+  page.on("pageerror", (error) =>
+    console.info("ECHO_PAGE_ERROR", error.message),
+  );
+  page.on("requestfailed", (request) =>
+    console.info("ECHO_REQUEST_FAILED", request.url(), request.failure()),
+  );
+  page.on("console", (message) => {
+    if (message.type() === "error")
+      console.info("ECHO_BROWSER_CONSOLE", message.text());
+  });
+}
 test("phrase lifecycle, persistence, favorites, theme, language and backup", async ({
   page,
 }) => {
@@ -106,6 +119,10 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
+  // ready means an active worker exists, but it may not yet control the page.
+  await expect.poll(() => page.evaluate(
+    () => Boolean(navigator.serviceWorker.controller),
+  )).toBe(true);
   await page.reload();
   for (const label of [
     "Home",
@@ -128,8 +145,25 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
     fullPage: true,
   });
   await page.getByRole("button", { name: "Home", exact: true }).click();
+  logOfflineErrors(page);
   await context.setOffline(true);
-  await page.reload();
+  const offlineResponse = await page.reload();
+  const offlineInfo = await page.evaluate(async () => ({
+    body: document.body?.innerText.slice(0, 500),
+    controlled: Boolean(navigator.serviceWorker?.controller),
+    caches: await caches.keys(),
+    cacheFiles: await (async () => {
+      const names = await caches.keys();
+      const cached = names[0] && await caches.open(names[0]);
+      return cached ? (await cached.keys()).map((r) => new URL(r.url).pathname) : [];
+    })(),
+    scripts: Array.from(document.scripts).map((script) => script.src),
+    url: location.href,
+  }));
+  console.info("ECHO_OFFLINE_DIAGNOSTIC", JSON.stringify({
+    ...offlineInfo,
+    responseStatus: offlineResponse?.status(),
+  }));
   await expect(
     page.getByRole("heading", { name: "Make yourself heard." }),
   ).toBeVisible();
@@ -266,8 +300,29 @@ test("deep links, browser history and first-load offline assets", async ({
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
+  // ready means an active worker exists, but it may not yet control the page.
+  await expect.poll(() => page.evaluate(
+    () => Boolean(navigator.serviceWorker.controller),
+  )).toBe(true);
+  logOfflineErrors(page);
   await context.setOffline(true);
-  await page.reload();
+  const offlineResponse = await page.reload();
+  const offlineInfo = await page.evaluate(async () => ({
+    body: document.body?.innerText.slice(0, 500),
+    controlled: Boolean(navigator.serviceWorker?.controller),
+    caches: await caches.keys(),
+    cacheFiles: await (async () => {
+      const names = await caches.keys();
+      const cached = names[0] && await caches.open(names[0]);
+      return cached ? (await cached.keys()).map((r) => new URL(r.url).pathname) : [];
+    })(),
+    scripts: Array.from(document.scripts).map((script) => script.src),
+    url: location.href,
+  }));
+  console.info("ECHO_OFFLINE_DIAGNOSTIC", JSON.stringify({
+    ...offlineInfo,
+    responseStatus: offlineResponse?.status(),
+  }));
   await expect(
     page.getByRole("heading", { name: "Library", exact: true }),
   ).toBeVisible();
