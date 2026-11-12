@@ -37,7 +37,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add echo-next/package.json echo-next/package-lock.json
+          git add package.json package-lock.json
           if git diff --cached --quiet; then
             echo "Dependencies are already up to date."
           else
