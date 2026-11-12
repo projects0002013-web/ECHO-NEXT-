@@ -30,8 +30,14 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith((async () => {
     const cache = await caches.open(CONFIG.cache);
-    // A network failure may reject or return a non-OK response in browsers.
-    // Both cases must fall back to pre-cached app shell resources.
+    // Hashed Vite assets are immutable. Serve their precached response
+    // immediately, so an offline reload never races a failed network fetch.
+    if (url.pathname.startsWith(CONFIG.base + "assets/")) {
+      const cachedAsset = await cache.match(request, { ignoreSearch: true });
+      if (cachedAsset) return cachedAsset;
+    }
+    // Navigations remain network-first to allow fresh app shell updates.
+    // A network failure may reject or return a non-OK response.
     try {
       const response = await fetch(request);
       if (response.ok) return response;
