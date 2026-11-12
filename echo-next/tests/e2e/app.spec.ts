@@ -133,7 +133,17 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
   });
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await context.setOffline(true);
-  await page.reload();
+  const offlineResponse = await page.reload();
+  const offlineInfo = await page.evaluate(async () => ({
+    body: document.body?.innerText.slice(0, 500),
+    controlled: Boolean(navigator.serviceWorker?.controller),
+    caches: await caches.keys(),
+    url: location.href,
+  }));
+  console.info("ECHO_OFFLINE_DIAGNOSTIC", JSON.stringify({
+    ...offlineInfo,
+    responseStatus: offlineResponse?.status(),
+  }));
   await expect(
     page.getByRole("heading", { name: "Make yourself heard." }),
   ).toBeVisible();
@@ -275,7 +285,17 @@ test("deep links, browser history and first-load offline assets", async ({
     () => Boolean(navigator.serviceWorker.controller),
   )).toBe(true);
   await context.setOffline(true);
-  await page.reload();
+  const offlineResponse = await page.reload();
+  const offlineInfo = await page.evaluate(async () => ({
+    body: document.body?.innerText.slice(0, 500),
+    controlled: Boolean(navigator.serviceWorker?.controller),
+    caches: await caches.keys(),
+    url: location.href,
+  }));
+  console.info("ECHO_OFFLINE_DIAGNOSTIC", JSON.stringify({
+    ...offlineInfo,
+    responseStatus: offlineResponse?.status(),
+  }));
   await expect(
     page.getByRole("heading", { name: "Library", exact: true }),
   ).toBeVisible();
