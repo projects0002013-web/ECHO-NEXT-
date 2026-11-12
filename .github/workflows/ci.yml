@@ -10,6 +10,21 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  security:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: echo-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: echo-next/package-lock.json
+      - run: npm ci
+      - name: Audit vulnerable dependencies
+        run: npm audit --audit-level=moderate
   web:
     runs-on: ubuntu-latest
     strategy:
