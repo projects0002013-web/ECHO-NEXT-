@@ -143,6 +143,7 @@ export default function App() {
   const [voiceFilter, setVoiceFilter] = useState("");
   const [systemVoiceQuery, setSystemVoiceQuery] = useState("");
   const [previewingSystemVoice, setPreviewingSystemVoice] = useState("");
+  const [systemVoiceAvailability, setSystemVoiceAvailability] = useState<"all" | "offline" | "online">("all");
   const s = state.settings;
   const be: Record<string, string> = {
     "Home": "Галоўная", "Communicate": "Зносіны", "Voice Studio": "Студыя голасу",
@@ -506,6 +507,11 @@ export default function App() {
   const activeVoice = voices.find((v) => v.id === s.voice);
   const voiceLabel =
     activeVoice?.name || t("Device default", "Системный голос");
+  const filteredSystemVoices = voices.filter((v) =>
+    (!voiceFilter || v.language === voiceFilter) &&
+    (systemVoiceAvailability === "all" || (systemVoiceAvailability === "offline" ? v.local : !v.local)) &&
+    (v.name + " " + v.language).toLowerCase().includes(systemVoiceQuery.trim().toLowerCase())
+  );
   function card(p: Phrase) {
     return (
       <article className="phrase-card" key={p.id}>
@@ -1197,44 +1203,51 @@ export default function App() {
               <div className="settings-grid">
                 <section className="panel">
                   <h2>{t("Make it sound like you", "Звучание голоса")}</h2>
-                  <label>
-                    {t("Voice language", "Язык голоса")}
-                    <select
-                      value={voiceFilter}
-                      onChange={(e) => setVoiceFilter(e.target.value)}
-                    >
-                      <option value="">
-                        {t("All languages", "Все языки")}
-                      </option>
-                      {[...new Set(voices.map((v) => v.language))].map((l) => (
-                        <option key={l}>{l}</option>
-                      ))}
-                    </select>
-                  </label>
                   <div className="system-voice-picker">
-                    <label>
-                      {t("System voice", "Системный голос")}
-                      <input value={systemVoiceQuery} onChange={(e) => setSystemVoiceQuery(e.target.value)} placeholder={t("Search installed voices", "Поиск установленных голосов")} />
-                    </label>
+                    <div className="system-voice-tools">
+                      <label className="system-voice-language">
+                        {t("Voice language", "Язык голоса")}
+                        <select value={voiceFilter} onChange={(e) => setVoiceFilter(e.target.value)}>
+                          <option value="">{t("All languages", "Все языки")}</option>
+                          {[...new Set(voices.map((v) => v.language))].map((l) => <option key={l}>{l}</option>)}
+                        </select>
+                      </label>
+                      <label className="system-voice-search">
+                        {t("Find a voice", "Найти голос")}
+                        <span className="system-voice-search-box">
+                          <Search size={17} />
+                          <input value={systemVoiceQuery} onChange={(e) => setSystemVoiceQuery(e.target.value)} placeholder={t("Search by name or language", "Поиск по имени или языку")} />
+                          {systemVoiceQuery && <button type="button" className="system-voice-clear" onClick={() => setSystemVoiceQuery("")} aria-label={t("Clear search", "Очистить поиск")}><X size={15} /></button>}
+                        </span>
+                      </label>
+                    </div>
+                    <div className="system-voice-filter-row">
+                      <div className="system-voice-filters" role="group" aria-label={t("Voice availability", "Доступность голоса")}>
+                        {(["all", "offline", "online"] as const).map((availability) => <button type="button" key={availability} className={systemVoiceAvailability === availability ? "active" : ""} aria-pressed={systemVoiceAvailability === availability} onClick={() => setSystemVoiceAvailability(availability)}>{availability === "all" ? t("All voices", "Все голоса") : availability === "offline" ? t("Offline", "Офлайн") : t("Online", "Онлайн")}</button>)}
+                      </div>
+                      <span className="system-voice-count">{filteredSystemVoices.length} {t("voices found", "голосов найдено")}</span>
+                    </div>
                     <div className="system-voice-list">
                       <button type="button" className={!s.voice ? "system-voice-option selected" : "system-voice-option"} aria-pressed={!s.voice} onClick={() => setting("voice", "")}>
                         <span className="system-voice-icon"><Volume2 size={18} /></span>
                         <span className="system-voice-copy"><strong>{t("Device default", "По умолчанию")}</strong><small>{t("Let the device choose", "Выбор устройства")}</small></span>
                         <span className="system-voice-check">{!s.voice ? <Check size={16} /> : null}</span>
                       </button>
-                      {voices.filter((v) => (!voiceFilter || v.language === voiceFilter) && (v.name + " " + v.language).toLowerCase().includes(systemVoiceQuery.trim().toLowerCase())).map((v) => (
+                      {filteredSystemVoices.map((v) => (
                         <div className={s.voice === v.id ? "system-voice-option selected" : "system-voice-option"} key={v.id}>
                           <button type="button" className="system-voice-select" aria-pressed={s.voice === v.id} onClick={() => setting("voice", v.id)}>
                             <span className="system-voice-icon"><Volume2 size={18} /></span>
-                            <span className="system-voice-copy"><strong>{v.name}</strong><small>{v.language} · {v.local ? t("Offline", "Офлайн") : t("May need internet", "Может требовать интернет")}</small></span>
+                            <span className="system-voice-copy"><strong>{v.name}</strong><small>{v.language}</small></span>
+                            <span className={v.local ? "system-voice-status offline" : "system-voice-status online"}>{v.local ? t("Offline", "Офлайн") : t("Online", "Онлайн")}</span>
                             <span className="system-voice-check">{s.voice === v.id ? <Check size={16} /> : null}</span>
                           </button>
                           <button type="button" className="system-voice-preview" disabled={Boolean(previewingSystemVoice)} onClick={() => void previewSystemVoice(v)} aria-label={t("Preview voice", "Прослушать голос") + " " + v.name}>
-                            <Play size={14} fill="currentColor" /> {previewingSystemVoice === v.id ? t("Playing", "Звучит") : t("Preview", "Пример")}
+                            <Play size={14} fill="currentColor" /> {previewingSystemVoice === v.id ? t("Playing", "Звучит") : t("Listen", "Слушать")}
                           </button>
                         </div>
                       ))}
-                      {!voices.length && <p className="field-note">{t("No installed voices found. Install a speech engine or language pack in device settings.", "Установленные голоса не найдены. Добавьте движок речи или языковой пакет в настройках устройства.")}</p>}
+                      {!voices.length && <p className="system-voice-empty">{t("No installed voices found. Install a speech engine or language pack in device settings.", "Установленные голоса не найдены. Добавьте движок речи или языковой пакет в настройках устройства.")}</p>}
+                      {voices.length > 0 && !filteredSystemVoices.length && <p className="system-voice-empty">{t("No voices match these filters. Try another language or reset the filters.", "Нет голосов по этим фильтрам. Выберите другой язык или сбросьте фильтры.")}</p>}
                     </div>
                   </div>
                   <p className="field-note">
