@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   initialState,
+  stateSchema,
   saveState,
   loadState,
   upsertPhrase,
@@ -74,6 +75,19 @@ describe("local communication data", () => {
     const restored = await loadState();
     expect(restored.settings.language).toBe("be");
     expect(restored.phrases.find((p) => p.id === "be-test")?.language).toBe("be");
+  });
+  it("defaults the new speech mode when reading legacy saved data", () => {
+    const legacy = initialState();
+    const legacySettings = { ...legacy.settings };
+    Reflect.deleteProperty(legacySettings, "speechMode");
+    const restored = stateSchema.parse({ ...legacy, settings: legacySettings });
+    expect(restored.settings.speechMode).toBe("auto");
+  });
+  it("persists the selected speech engine mode", async () => {
+    const s = initialState();
+    s.settings.speechMode = "neural";
+    await saveState(s);
+    expect((await loadState()).settings.speechMode).toBe("neural");
   });
   it("persists theme and accessibility preferences", async () => {
     const s = initialState();

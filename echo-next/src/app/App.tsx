@@ -208,6 +208,11 @@ export default function App() {
     "My personal space": "Мая асабістая прастора",
     "Recording name": "Назва запісу",
     "Adaptive pacing": "Адаптыўны тэмп",
+    "Voice engine mode": "Рэжым галасавога рухавіка",
+    "Automatic": "Аўтаматычна",
+    "System voice only": "Толькі сістэмны голас",
+    "Installed neural voices": "Усталяваныя нейрасеткавыя галасы",
+    "Automatic uses an installed offline neural model when available; otherwise ECHO uses the device voice. No text is sent online in this version.": "Аўтаматычны рэжым выкарыстоўвае ўсталяваную лакальную нейрасеткавую мадэль, калі яна даступная; інакш ECHO выкарыстоўвае сістэмны голас. У гэтай версіі тэкст не адпраўляецца ў інтэрнэт.",
     "Off": "Выключана",
     "Smart pacing": "Разумны тэмп",
     "Smart pacing gently adjusts speech rate for longer sentences and punctuation. It does not infer emotions.": "Разумны тэмп мякка змяняе хуткасць маўлення ў залежнасці ад даўжыні фразы і пунктуацыі. Эмоцыі не распазнаюцца.",
@@ -416,7 +421,7 @@ export default function App() {
     setSpeaking(true);
     setNotice("");
     try {
-      await speech.speak(value, adaptiveSpeechSettings(value, s), language);
+      await speech.speak(value, s, language);
       if (id === speakId.current)
         update((v) => ({
           ...v,
@@ -1310,6 +1315,23 @@ export default function App() {
                       <option value="smart">{t("Smart pacing", "Умный темп")}</option>
                     </select>
                   </label>
+                  <label>
+                    {t("Voice engine mode", "Режим голосового движка")}
+                    <select
+                      value={s.speechMode}
+                      onChange={(e) => setting("speechMode", e.target.value as "auto" | "system" | "neural")}
+                    >
+                      <option value="auto">{t("Automatic", "Автоматически")}</option>
+                      <option value="system">{t("System voice only", "Только системный голос")}</option>
+                      <option value="neural">{t("Installed neural voices", "Установленные нейросетевые голоса")}</option>
+                    </select>
+                  </label>
+                  <p className="field-note">
+                    {t(
+                      "Automatic and Neural modes use downloaded offline models when available; otherwise ECHO falls back to the device voice so communication remains available. No text is sent online in this version.",
+                      "Автоматический режим и режим нейроголоса используют скачанные офлайн-модели, если они доступны. Иначе ECHO переключается на голос устройства, чтобы общение не прерывалось. В этой версии текст не отправляется в интернет.",
+                    )}
+                  </p>
                   <p className="field-note">
                     {t(
                       "Smart pacing gently adjusts speech rate for longer sentences and punctuation. It does not infer emotions.",

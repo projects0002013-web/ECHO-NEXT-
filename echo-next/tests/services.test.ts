@@ -5,7 +5,7 @@ import { initialState } from "../src/database/store";
 import { validateVoiceRequest } from "../src/services/ai";
 import { adaptiveSpeechSettings } from "../src/services/adaptiveSpeech";
 import { adaptiveSupertonicSpeed, getSupertonicCacheStatus, loadSupertonicPreferences, saveSupertonicPreferences } from "../src/services/supertonic";
-import { AI_VOICES, loadLocalAIPreferences, saveLocalAIPreferences } from "../src/services/localAi";
+import { AI_VOICES, loadLocalAIPreferences, saveLocalAIPreferences, normalizeLocalAISpeed } from "../src/services/localAi";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -91,6 +91,12 @@ it("reports unavailable Cache Storage instead of pretending offline files exist"
   expect(await getSupertonicCacheStatus()).toMatchObject({
     available: false, modelFilesCached: 0, voiceStylesCached: 0, complete: false,
   });
+});
+it("clamps Kokoro speaking speed to the supported range", () => {
+  expect(normalizeLocalAISpeed(0.1)).toBe(0.5);
+  expect(normalizeLocalAISpeed(1.25)).toBe(1.25);
+  expect(normalizeLocalAISpeed(3)).toBe(2);
+  expect(normalizeLocalAISpeed(Number.NaN)).toBe(1);
 });
 it("exposes the full supported Kokoro preset voice list", () => {
   expect(AI_VOICES).toHaveLength(28);
