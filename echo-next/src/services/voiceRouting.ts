@@ -33,7 +33,7 @@ export type VoiceRoute = {
   recommendedDownload?: "supertonic" | "kokoro";
 };
 
-const SUPERTONIC_LANGUAGES = new Set(
+const SUPERTONIC_LANGUAGES = new Set<string>(
   SUPPORTED_SUPERTONIC_LANGUAGES.map(([code]) => code),
 );
 
