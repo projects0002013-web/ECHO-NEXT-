@@ -63,6 +63,7 @@ import {
 } from "../database/store";
 import { speech, type Voice } from "../services/speech";
 import { VoiceRecorder } from "../services/recorder";
+import { adaptiveSpeechSettings } from "../services/adaptiveSpeech";
 import LocalAiVoicePanel from "./LocalAiVoicePanel";
 type Page = "home" | "communicate" | "voice" | "library" | "settings";
 type Editor =
@@ -363,7 +364,7 @@ export default function App() {
     setSpeaking(true);
     setNotice("");
     try {
-      await speech.speak(value, s, language);
+      await speech.speak(value, adaptiveSpeechSettings(value, s), language);
       if (id === speakId.current)
         update((v) => ({
           ...v,
@@ -1194,6 +1195,22 @@ export default function App() {
                     0.05,
                     "×",
                   )}
+                  <label>
+                    {t("Adaptive pacing", "Адаптивный темп")}
+                    <select
+                      value={s.adaptiveVoice}
+                      onChange={(e) => setting("adaptiveVoice", e.target.value as "off" | "smart")}
+                    >
+                      <option value="off">{t("Off", "Выключено")}</option>
+                      <option value="smart">{t("Smart pacing", "Умный темп")}</option>
+                    </select>
+                  </label>
+                  <p className="field-note">
+                    {t(
+                      "Smart pacing gently adjusts speech rate for longer sentences and punctuation. It does not infer emotions.",
+                      "Умный темп немного меняет скорость в зависимости от длины фразы и пунктуации. Эмоции не распознаются.",
+                    )}
+                  </p>
                   {range("pitch", t("Pitch", "Высота тона"), 0.5, 2, 0.05, "×")}
                   <div className="section-head">
                     <h3>{t("Voice profiles", "Профили голоса")}</h3>
