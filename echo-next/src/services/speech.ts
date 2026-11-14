@@ -31,7 +31,7 @@ export class BrowserSpeech implements SpeechEngine {
     speechSynthesis.cancel();
     return new Promise<void>((resolve, reject) => {
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = language === "ru" ? "ru-RU" : "en-US";
+      u.lang = language === "ru" ? "ru-RU" : language === "be" ? "be-BY" : "en-US";
       u.rate = s.rate;
       u.pitch = s.pitch;
       const voice = speechSynthesis
@@ -69,7 +69,7 @@ class AndroidSpeech implements SpeechEngine {
   speak(text: string, s: Settings, language = s.language) {
     return native.speak({
       text,
-      language: language === "ru" ? "ru-RU" : "en-US",
+      language: language === "ru" ? "ru-RU" : language === "be" ? "be-BY" : "en-US",
       voice: s.voice,
       rate: s.rate,
       pitch: s.pitch,
