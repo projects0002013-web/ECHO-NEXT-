@@ -55,7 +55,7 @@ function systemFallback(
     reason: input.systemVoiceAvailable
       ? recommendedDownload ? "offline-model-not-installed" : offlineReason(input)
       : "offline-language-fallback",
-    requiresModelDownload: false,
+    requiresModelDownload: Boolean(recommendedDownload),
     ...(recommendedDownload ? { recommendedDownload } : {}),
   };
 }
