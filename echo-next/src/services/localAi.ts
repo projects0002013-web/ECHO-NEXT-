@@ -1,4 +1,4 @@
-import { KokoroTTS } from "kokoro-js";
+import type { KokoroTTS } from "kokoro-js";
 
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
 export const AI_VOICES = [
@@ -15,10 +15,10 @@ let modelPromise: Promise<Model> | undefined;
 /** Explicitly lazy: model downloads only after the user clicks Load AI. */
 export async function loadLocalAI(): Promise<Model> {
   if (!modelPromise) {
-    modelPromise = KokoroTTS.from_pretrained(MODEL_ID, {
+    modelPromise = import("kokoro-js").then(({ KokoroTTS }) => KokoroTTS.from_pretrained(MODEL_ID, {
       dtype: "q8",
       device: "wasm",
-    }).catch((error: unknown) => {
+    })).catch((error: unknown) => {
       modelPromise = undefined; // Retry possible after interrupted download.
       throw error;
     });
