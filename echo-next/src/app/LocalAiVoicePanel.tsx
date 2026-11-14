@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { AI_VOICES, loadLocalAI, synthesizeLocalAI, type AIVoice } from "../services/localAi";
+import { AI_VOICES, loadLocalAIPreferences, saveLocalAIPreferences, loadLocalAI, synthesizeLocalAI, type AIVoice } from "../services/localAi";
 
 type UILanguage = "en" | "ru" | "be";
 export default function LocalAiVoicePanel({ language }: { language: UILanguage }) {
   const ru = language === "ru";
   const be = language === "be";
   const [text, setText] = useState("Hello. This is a new AI-generated voice.");
-  const [voice, setVoice] = useState<AIVoice>("af_heart");
+  const [voice, setVoice] = useState<AIVoice>(() => loadLocalAIPreferences().voice);
   const [status, setStatus] = useState<"unloaded" | "loading" | "ready" | "generating" | "error">("unloaded");
   const [message, setMessage] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
@@ -24,6 +24,10 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    saveLocalAIPreferences({ voice });
+  }, [voice]);
 
   const load = async () => {
     if (status === "loading" || status === "generating") return;
@@ -77,9 +81,9 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
         <span className="badge">{status === "ready" ? copy("Ready", "Готов", "Гатова") : "Beta"}</span>
       </div>
       <p>{copy(
-        "Kokoro generates new speech locally. English only for now. This does not clone a person's voice.",
-        "Настоящая нейросеть Kokoro создаёт новые фразы на устройстве. Пока поддерживается английский. Это не копия личного голоса.",
-        "Нейрасетка Kokoro стварае новае маўленне на прыладзе. Пакуль падтрымліваецца толькі англійская мова. Гэта не кланаванне асабістага голасу."
+        "Kokoro generates new English speech locally. Choose from 28 preset voices across US and UK English. This does not clone a person's voice.",
+        "Kokoro локально создаёт английскую речь. Доступны 28 готовых голосов с американским и британским английским. Это не копирование личного голоса.",
+        "Kokoro лакальна стварае англійскае маўленне. Даступныя 28 гатовых галасоў з амерыканскай і брытанскай англійскай. Гэта не кланаванне асабістага голасу."
       )}</p>
       <p className="field-note">{copy(
         "Model download is large and needs internet once. Later offline availability depends on browser cache. Your phrases and recordings are not sent to an inference server.",
@@ -92,7 +96,7 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
       </label>
       <label>
         {copy("AI voice", "Нейросетевой голос", "Голас нейрасеткі")}
-        <select value={voice} onChange={(event) => setVoice(event.target.value as AIVoice)}>
+        <select aria-label={copy("Kokoro voice", "Голос Kokoro", "Голас Kokoro")} value={voice} onChange={(event) => setVoice(event.target.value as AIVoice)}>
           {AI_VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
         </select>
       </label>
