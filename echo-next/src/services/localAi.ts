@@ -52,15 +52,34 @@ export function saveLocalAIPreferences(preferences: { voice: AIVoice }): void {
 
 type Model = Awaited<ReturnType<typeof KokoroTTS.from_pretrained>>;
 let modelPromise: Promise<Model> | undefined;
+let modelReady = false;
+const INSTALL_KEY = "echo-kokoro-installed-v1";
+
+/** True only after the user explicitly loaded the model successfully once. */
+export function hasLocalAIInstallConsent(): boolean {
+  try { return globalThis.localStorage?.getItem(INSTALL_KEY) === "1"; }
+  catch { return false; }
+}
+
+/** True when Kokoro is loaded in this page session. */
+export function isLocalAIReady(): boolean {
+  return modelReady;
+}
 
 /** Explicitly lazy: model downloads only after the user clicks Load AI. */
 export async function loadLocalAI(): Promise<Model> {
   if (!modelPromise) {
-    modelPromise = import("kokoro-js").then(({ KokoroTTS }) => KokoroTTS.from_pretrained(MODEL_ID, {
-      dtype: "q8",
-      device: "wasm",
-    })).catch((error: unknown) => {
+    modelPromise = import("kokoro-js").then(async ({ KokoroTTS }) => {
+      const model = await KokoroTTS.from_pretrained(MODEL_ID, {
+        dtype: "q8",
+        device: "wasm",
+      });
+      modelReady = true;
+      try { globalThis.localStorage?.setItem(INSTALL_KEY, "1"); } catch { /* model still works this session */ }
+      return model;
+    }).catch((error: unknown) => {
       modelPromise = undefined; // Retry possible after interrupted download.
+      modelReady = false;
       throw error;
     });
   }
