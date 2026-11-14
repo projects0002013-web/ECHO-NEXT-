@@ -1,11 +1,16 @@
 import { it, expect, vi, afterEach } from "vitest";
-import { BrowserSpeech } from "../src/services/speech";
+import { BrowserSpeech, speechLocale } from "../src/services/speech";
 import { VoiceRecorder } from "../src/services/recorder";
 import { initialState } from "../src/database/store";
 import { validateVoiceRequest } from "../src/services/ai";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+});
+it("maps Belarusian to the correct BCP-47 voice locale", () => {
+  expect(speechLocale("be")).toBe("be-BY");
+  expect(speechLocale("ru")).toBe("ru-RU");
+  expect(speechLocale("en")).toBe("en-US");
 });
 it("reports an unavailable browser speech engine", async () => {
   const engine = new BrowserSpeech();
