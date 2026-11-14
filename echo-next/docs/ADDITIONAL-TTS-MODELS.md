@@ -1,42 +1,54 @@
-# ECHO NEXT — additional local TTS models and Belarusian
+# ECHO NEXT — local TTS engines and language support
 
-## Current production path
+## Engines now present in the application
 
-- Kokoro 82M (ONNX, q8 WASM) remains the tested neural voice path. It currently supports English in this app.
-- Russian, Kazakh and Belarusian phrases use the Android/browser system TTS adapter when the corresponding voice is installed on the device. Availability depends on the OS voice pack; the app must show the normal unsupported-language error rather than pretend a neural model supports the language.
+### Kokoro 82M (existing)
+- ONNX model through `kokoro-js`, quantized q8/WASM.
+- Four preset voice choices currently exposed by ECHO.
+- In this integration, English only.
+- Lazy model loading; existing offline behavior was verified by the project owner on their Android device.
 
-## Candidate engine: Supertonic 3
+### Supertonic 3 (new optional engine)
+- Integrated through the upstream browser ONNX Runtime Web helper.
+- Model revision pinned to `aafc6e32416a594460b32413efc49d7fe4ce6d46`.
+- ONNX weights total about 398 MB; preset voice styles are about 2.92 MB.
+- Ten presets: F1–F5 and M1–M5.
+- 31 supported languages, including English, Russian and Ukrainian. Belarusian is not included.
+- WebGPU is attempted first; WASM is used as a fallback.
+- Assets are downloaded only after the user explicitly clicks the download/load button. The runtime caches successful CORS responses in Cache Storage so later launches can reuse them offline, subject to browser storage quota/eviction.
+- Android WebView and low-memory phones require physical-device testing. Do not claim every phone can load the 398 MB model.
+- The original upstream Supertonic source repository was archived on 2026-09-09; this integration pins a specific model revision and should be treated as an optional, unsupported upstream engine.
 
-Official project: https://github.com/supertone-inc/supertonic
-Model: https://huggingface.co/Supertone/supertonic-3
-Browser setup documentation: https://supertonictts.com/installation
+## Belarusian support
 
-Verified upstream information:
-- ONNX model family with browser WASM/WebGPU examples.
-- Approximately 99M parameters across public ONNX assets.
-- 31 explicitly supported languages: English, Korean, Japanese, Arabic, Bulgarian, Czech, Danish, German, Greek, Spanish, Estonian, Finnish, French, Hindi, Croatian, Hungarian, Indonesian, Italian, Lithuanian, Latvian, Dutch, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Swedish, Turkish, Ukrainian and Vietnamese.
-- Belarusian is NOT in its published language list.
-- Model weights use the OpenRAIL-M license; review the full terms before distribution.
+- Interface and phrase locale: `be`.
+- System speech locale: `be-BY`.
+- Browser and Android adapters now require a matching installed Belarusian voice when voice metadata is available. They must not deliberately select an English or Russian voice for Belarusian.
+- Actual Belarusian system voice availability depends on the device's installed TTS engine and language packs.
+- Neither Kokoro nor Supertonic 3 has Belarusian in the published supported-language list.
 
-Status: researched candidate, NOT yet wired into ECHO's model loader. Do not show it as an installed/working option until the ONNX runtime, model assets, offline cache, mobile memory use, license notice and actual audio output have been tested.
+### Belarusian neural model research
 
-## Belarusian
+The public `YauhenBichel/belarusian-tts` project currently wraps OmniVoice behind a local Python HTTP server. Its model downloads are about 1.2 GB and its README reports roughly one minute to synthesize two seconds of audio on a 16-thread CPU. This is not an appropriate default for a small offline Android app and is NOT integrated into ECHO.
+- Project: https://github.com/YauhenBichel/belarusian-tts
+- The same project describes a smaller Piper voice as future work, not a released ready-to-use model.
+- No Belarusian Piper voice was listed in the Piper voice catalogue inspected during this work.
+- Do not add a fake Belarusian neural model or silently substitute Russian. Keep the `be-BY` system-voice route until a compact, licensed, mobile-tested Belarusian model is available.
 
-The app now accepts `be` as an interface/phrase locale and requests the standard BCP-47 speech locale `be-BY` from the device's speech engine. This is a system-TTS route, not a claim that Kokoro or Supertonic currently generate Belarusian.
+## Adaptive delivery
 
-- On Android, install a Belarusian voice only if the device's installed TTS engine offers one.
-- In a browser, availability depends on the browser/OS speech voice list.
-- If no Belarusian system voice exists, the engine may reject the request; do not silently substitute Russian.
-- The official RHVoice language list currently does not list Belarusian: https://rhvoice.org/languages/
+ECHO now offers a conservative “Adaptive pacing” option for system TTS and Supertonic. It adjusts speech rate based on sentence length and punctuation. It does not infer emotion, change a person's identity, or create a voice clone. The user can switch it off and retain the manually selected speed.
 
-## Future Belarusian neural model evaluation
+## Model storage and privacy
 
-A Belarusian-specific model must be evaluated separately for:
-- a verified public model card and exact supported locale;
-- model and tokenizer size suitable for Android;
-- an offline-capable ONNX or compatible runtime;
-- license compatibility for redistribution;
-- correct Belarusian orthography, stress and pronunciation;
-- real-device inference and audio-quality tests.
+- No model weights are committed to Git or bundled into the APK.
+- Supertonic's first download is approximately 400 MB and is user-initiated.
+- Cache Storage persistence is best-effort; browser or Android WebView storage can be evicted. A fresh offline test after app restart is still required on each target device.
+- Text and generated audio are processed locally by these engines. The model files themselves are downloaded from Hugging Face on first load.
+- If storage is insufficient or model loading fails, existing system TTS and Kokoro remain available.
 
-Do not bundle a multi-gigabyte model or an unclear/non-commercial license in the Android APK. Prefer opt-in downloads stored separately from the application package.
+## Licensing and provenance
+
+- Supertonic source helper: MIT, copyright Supertone Inc.; see `THIRD-PARTY-NOTICES.md`.
+- Supertonic 3 weights: OpenRAIL-M; read the full model license before redistribution or product release.
+- Kokoro and other dependencies retain their own upstream licenses. Review each model's model card separately before commercial distribution.
