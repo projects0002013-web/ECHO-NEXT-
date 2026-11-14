@@ -82,6 +82,14 @@ describe("resolveVoiceRoute", () => {
     })).toMatchObject({ mode: "offline", engine: "kokoro" });
   });
 
+  it("respects system-only mode even if the device reports no matching voice", () => {
+    expect(resolveVoiceRoute({
+      ...base,
+      preferredOfflineEngine: "system",
+      systemVoiceAvailable: false,
+    })).toMatchObject({ mode: "offline", engine: "system" });
+  });
+
   it("normalizes language tags with underscores", () => {
     expect(resolveVoiceRoute({ ...base, language: "ru_RU" })).toMatchObject({
       engine: "supertonic",
