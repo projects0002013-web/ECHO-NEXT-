@@ -65,6 +65,7 @@ import { speech, type Voice } from "../services/speech";
 import { VoiceRecorder } from "../services/recorder";
 import { adaptiveSpeechSettings } from "../services/adaptiveSpeech";
 import LocalAiVoicePanel from "./LocalAiVoicePanel";
+import SupertonicVoicePanel from "./SupertonicVoicePanel";
 type Page = "home" | "communicate" | "voice" | "library" | "settings";
 type Editor =
   | { kind: "phrase"; value?: Phrase }
@@ -1351,6 +1352,7 @@ export default function App() {
                 </section>
               </div>
               <LocalAiVoicePanel language={s.language} />
+              <SupertonicVoicePanel language={s.language} />
             </>
           )}
           {page === "settings" && (
