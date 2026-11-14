@@ -115,6 +115,7 @@ class AndroidSpeech implements SpeechEngine {
 
 let activeAudio: HTMLAudioElement | undefined;
 let stopActiveAudio: (() => void) | undefined;
+let speechRequestId = 0;
 
 function stopGeneratedAudio(): void {
   stopActiveAudio?.();
@@ -165,6 +166,8 @@ class HybridSpeech implements SpeechEngine {
   async speak(text: string, settings: Settings, language = settings.language) {
     const clean = text.trim();
     if (!clean) return;
+    const requestId = ++speechRequestId;
+    const isCurrentRequest = () => requestId === speechRequestId;
     const locale = speechLocale(language);
     const languageCode = locale.split("-")[0].toLowerCase();
     const installedSystemVoices = await this.system.voices().catch(() => []);
@@ -193,6 +196,7 @@ class HybridSpeech implements SpeechEngine {
         if (!isLocalAIReady()) await loadLocalAI();
         const { voice } = loadLocalAIPreferences();
         const audio = await synthesizeLocalAI(clean, voice);
+        if (!isCurrentRequest()) return;
         await playGeneratedAudio(audio);
         return;
       } catch {
@@ -215,6 +219,7 @@ class HybridSpeech implements SpeechEngine {
           prefs.steps,
           settings.adaptiveVoice === "smart",
         );
+        if (!isCurrentRequest()) return;
         await playGeneratedAudio(audio);
         return;
       } catch {
@@ -222,10 +227,11 @@ class HybridSpeech implements SpeechEngine {
       }
     }
 
-    await this.system.speak(clean, settings, language);
+    if (isCurrentRequest()) await this.system.speak(clean, settings, language);
   }
 
   async stop() {
+    speechRequestId++;
     stopGeneratedAudio();
     await this.system.stop();
   }
