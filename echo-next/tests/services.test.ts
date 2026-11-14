@@ -63,6 +63,31 @@ it("initializes voices, applies settings and cancels speech", async () => {
   await engine.stop();
   expect(cancel).toHaveBeenCalledTimes(2);
 });
+it("does not silently use an English browser voice for Belarusian", async () => {
+  const speak = vi.fn();
+  vi.stubGlobal("speechSynthesis", {
+    getVoices: () => [{ voiceURI: "en", name: "English", lang: "en-US", localService: true }],
+    cancel: vi.fn(),
+    speak,
+  });
+  vi.stubGlobal("SpeechSynthesisUtterance", class { constructor(public text: string) {} });
+  const engine = new BrowserSpeech();
+  await expect(engine.speak("Добры дзень", initialState().settings, "be")).rejects.toThrow("be-BY");
+  expect(speak).not.toHaveBeenCalled();
+});
+it("chooses an installed Belarusian browser voice when available", async () => {
+  let utterance: any;
+  vi.stubGlobal("speechSynthesis", {
+    getVoices: () => [{ voiceURI: "be", name: "Belarusian", lang: "be-BY", localService: true }],
+    cancel: vi.fn(),
+    speak: (value: any) => { utterance = value; value.onend(); },
+  });
+  vi.stubGlobal("SpeechSynthesisUtterance", class { constructor(public text: string) {} });
+  const engine = new BrowserSpeech();
+  await engine.speak("Добры дзень", initialState().settings, "be");
+  expect(utterance.lang).toBe("be-BY");
+  expect(utterance.voice.name).toBe("Belarusian");
+});
 it("handles microphone permission denial with a useful error", async () => {
   vi.stubGlobal("navigator", {
     mediaDevices: {
