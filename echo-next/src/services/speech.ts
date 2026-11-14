@@ -210,7 +210,7 @@ class HybridSpeech implements SpeechEngine {
           clean,
           prefs.voice,
           languageCode as SupertonicLanguage,
-          settings.rate,
+          Math.max(0.7, Math.min(1.8, settings.rate)),
           prefs.steps,
           settings.adaptiveVoice === "smart",
         );
