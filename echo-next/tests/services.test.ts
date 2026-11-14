@@ -4,7 +4,7 @@ import { VoiceRecorder } from "../src/services/recorder";
 import { initialState } from "../src/database/store";
 import { validateVoiceRequest } from "../src/services/ai";
 import { adaptiveSpeechSettings } from "../src/services/adaptiveSpeech";
-import { adaptiveSupertonicSpeed } from "../src/services/supertonic";
+import { adaptiveSupertonicSpeed, loadSupertonicPreferences, saveSupertonicPreferences } from "../src/services/supertonic";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -27,6 +27,34 @@ it("adapts Supertonic speed within its supported range", () => {
   expect(adaptiveSupertonicSpeed("A long sentence with many words that should be spoken more slowly.", 1, true)).toBe(0.95);
   expect(adaptiveSupertonicSpeed("Hello!", 1, true)).toBe(1.02);
   expect(adaptiveSupertonicSpeed("Hello.", 1, false)).toBe(1);
+});
+it("persists Supertonic voice preferences across component restarts", () => {
+  const storage = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+  });
+  const preferences = { voice: "M3" as const, language: "ru" as const, speed: 1.35, steps: 12 as const, adaptive: false };
+  saveSupertonicPreferences(preferences);
+  expect(loadSupertonicPreferences()).toEqual(preferences);
+});
+it("recovers safely from invalid Supertonic preferences", () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => "{invalid-json",
+    setItem: vi.fn(),
+  });
+  expect(loadSupertonicPreferences("ru")).toEqual({
+    voice: "F1", language: "ru", speed: 1, steps: 8, adaptive: true,
+  });
+});
+it("clamps corrupted Supertonic speed and ignores unknown voices", () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => JSON.stringify({ voice: "unknown", language: "xx", speed: 99, steps: 9, adaptive: false }),
+    setItem: vi.fn(),
+  });
+  expect(loadSupertonicPreferences()).toEqual({
+    voice: "F1", language: "en", speed: 1.8, steps: 8, adaptive: false,
+  });
 });
 it("reports an unavailable browser speech engine", async () => {
   const engine = new BrowserSpeech();
