@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Check as CheckMark } from "lucide-react";
 import {
   getSupertonicCacheStatus,
   loadSupertonic,
@@ -19,6 +20,7 @@ type Status = "idle" | "loading" | "ready" | "generating" | "error";
 
 export default function SupertonicVoicePanel({ language }: { language: UILanguage }) {
   const [status, setStatus] = useState<Status>("idle");
+  const [voiceGroup, setVoiceGroup] = useState<"all" | "female" | "male">("all");
   const [text, setText] = useState("Hello. This is ECHO speaking with Supertonic.");
   const [preferences, setPreferences] = useState(() =>
     loadSupertonicPreferences(language === "ru" ? "ru" : "en"),
@@ -28,6 +30,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
   const [progress, setProgress] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
   const [cacheStatus, setCacheStatus] = useState<SupertonicCacheStatus>({ available: true, modelFilesCached: 0, modelFilesTotal: 6, voiceStylesCached: 0, voiceStylesTotal: 10, complete: false });
+  const visibleVoiceStyles = SUPERTONIC_VOICES.filter((item) => voiceGroup === "all" || (voiceGroup === "female" ? item.startsWith("F") : item.startsWith("M")));
   const cached = cacheStatus.complete;
   const hasPartialCache = cacheStatus.modelFilesCached > 0 || cacheStatus.voiceStylesCached > 0;
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -177,14 +180,24 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
           </select>
         </label>
         <div className="supertonic-voice-picker" role="group" aria-label={copy("Neural voice style", "Стиль нейросетевого голоса", "Стыль нейрасеткавага голасу")}>
-          <span className="supertonic-picker-label">{copy("Neural voice style", "Стиль нейросетевого голоса", "Стыль нейрасеткавага голасу")}</span>
+          <div className="supertonic-picker-heading">
+            <div>
+              <span className="supertonic-picker-label">{copy("Choose a voice style", "Выберите стиль голоса", "Выберыце стыль голасу")}</span>
+              <p>{copy("10 built-in styles · F for female, M for male", "10 встроенных стилей · F — женский, M — мужской", "10 убудаваных стыляў · F — жаночы, M — мужчынскі")}</p>
+            </div>
+            <span className="supertonic-style-count">{visibleVoiceStyles.length}/10</span>
+          </div>
+          <div className="supertonic-voice-filters" role="group" aria-label={copy("Filter voice styles", "Фильтр стилей голоса", "Фільтр стыляў голасу")}>
+            {(["all", "female", "male"] as const).map((group) => <button type="button" key={group} className={voiceGroup === group ? "active" : ""} aria-pressed={voiceGroup === group} onClick={() => setVoiceGroup(group)}>{group === "all" ? copy("All styles", "Все", "Усе") : group === "female" ? copy("Female", "Женские", "Жаночыя") : copy("Male", "Мужские", "Мужчынскія")}</button>)}
+          </div>
           <div className="supertonic-voice-grid">
-            {SUPERTONIC_VOICES.map((v) => <button type="button" key={v} className={voice === v ? "supertonic-voice-option selected" : "supertonic-voice-option"} aria-pressed={voice === v} onClick={() => setPreferences((current) => ({ ...current, voice: v }))}>
+            {visibleVoiceStyles.map((v) => <button type="button" key={v} className={voice === v ? "supertonic-voice-option selected" : "supertonic-voice-option"} aria-label={v.startsWith("F") ? "Female " + v : "Male " + v} aria-pressed={voice === v} onClick={() => setPreferences((current) => ({ ...current, voice: v }))}>
               <span className="supertonic-voice-symbol">{v.startsWith("F") ? "F" : "M"}</span>
               <span><strong>{v.startsWith("F") ? copy("Female", "Женский", "Жаночы") : copy("Male", "Мужской", "Мужчынскі")}</strong><small>{v}</small></span>
-              {voice === v && <span className="supertonic-voice-selected">✓</span>}
+              {voice === v && <span className="supertonic-voice-selected"><CheckMark /></span>}
             </button>)}
           </div>
+          <div className="supertonic-selected-style"><span>{copy("Selected style", "Выбранный стиль", "Абраны стыль")}</span><strong>{voice.startsWith("F") ? copy("Female", "Женский", "Жаночы") : copy("Male", "Мужской", "Мужчынскі")} · {voice}</strong></div>
         </div>
       </div>
       <label>
