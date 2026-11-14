@@ -19,6 +19,16 @@ test("ECHO brand logo and Kokoro voice selection render and persist", async ({ p
   await expect(brandLogo).toHaveAttribute("src", /icon\.svg$/);
   await expect.poll(() => brandLogo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  const shortcuts = page.locator(".voice-engine-nav");
+  await expect(shortcuts.getByRole("link", { name: "System TTS" })).toBeVisible();
+  await shortcuts.getByRole("link", { name: "Kokoro" }).click();
+  await expect(page.locator("#kokoro-voice-engine")).toBeInViewport();
+  await shortcuts.getByRole("link", { name: "Supertonic" }).click();
+  await expect(page.locator("#supertonic-voice-engine")).toBeInViewport();
+  await shortcuts.getByRole("link", { name: "My recordings" }).click();
+  await expect(page.locator("#recorded-voice-panel")).toBeInViewport();
+  await shortcuts.getByRole("link", { name: "System TTS" }).click();
+  await expect(page.locator("#system-voice-engine")).toBeInViewport();
   const panel = page.getByRole("region", { name: "Local AI speech synthesis" });
   await expect(panel.getByRole("heading", { name: "Find your voice" })).toBeVisible();
   await expect(panel.locator(".voice-choice")).toHaveCount(28);
