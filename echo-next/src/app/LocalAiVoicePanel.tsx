@@ -25,6 +25,7 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
   const audioRef = useRef<HTMLAudioElement>(null);
   const urlRef = useRef("");
   const mountedRef = useRef(true);
+  const autoPlayPreviewRef = useRef(false);
 
   const copy = (en: string, ruText: string, beText: string) =>
     ru ? ruText : be ? beText : en;
@@ -40,6 +41,15 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
   useEffect(() => {
     saveLocalAIPreferences({ voice });
   }, [voice]);
+
+  useEffect(() => {
+    if (!audioUrl || !autoPlayPreviewRef.current) return;
+    autoPlayPreviewRef.current = false;
+    const player = audioRef.current;
+    if (player) void player.play().catch(() => {
+      setMessage(copy("Preview is ready. Press play below.", "Образец готов. Нажмите Play ниже.", "Узор гатовы. Націсніце Play ніжэй."));
+    });
+  }, [audioUrl]);
 
   const load = async () => {
     if (status === "loading" || status === "generating") return;
@@ -65,9 +75,19 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
     }
   };
 
+  const selectVoice = (nextVoice: AIVoice) => {
+    setVoice(nextVoice);
+    autoPlayPreviewRef.current = false;
+    audioRef.current?.pause();
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    urlRef.current = "";
+    setAudioUrl("");
+  };
+
   const previewVoice = async (selectedVoice: AIVoice) => {
     if (status !== "ready" || previewingVoice) return;
     setPreviewingVoice(selectedVoice);
+    autoPlayPreviewRef.current = true;
     setMessage(copy("Creating a short voice preview…", "Создаю короткий образец голоса…", "Ствараю кароткі ўзор голасу…"));
     try {
       const sample = await synthesizeLocalAI("Hello. This is a preview of my voice.", selectedVoice);
@@ -79,6 +99,7 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
       setAudioUrl(url);
       setMessage(copy("Voice preview is ready. Press play below.", "Образец готов. Нажмите воспроизведение ниже.", "Узор гатовы. Націсніце прайграванне ніжэй."));
     } catch (error) {
+      autoPlayPreviewRef.current = false;
       if (mountedRef.current) setMessage(error instanceof Error ? error.message : "Preview failed.");
     } finally {
       if (mountedRef.current) setPreviewingVoice(null);
@@ -88,6 +109,8 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
   const generate = async () => {
     if (status !== "ready") return;
     setStatus("generating");
+    autoPlayPreviewRef.current = false;
+    audioRef.current?.pause();
     setMessage(copy("Generating speech on this device…", "Нейросеть создаёт звук на этом устройстве…", "Нейрасетка стварае гук на гэтай прыладзе…"));
     try {
       const blob = await synthesizeLocalAI(text, voice);
@@ -164,7 +187,7 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
             const parts = item.label.split(" · ");
             const isFemale = parts[2]?.toLowerCase() === "female";
             return <article className={selected ? "voice-choice selected" : "voice-choice"} key={item.id}>
-              <button type="button" className="voice-choice-select" aria-pressed={selected} onClick={() => setVoice(item.id)}>
+              <button type="button" className="voice-choice-select" aria-pressed={selected} onClick={() => selectVoice(item.id)}>
                 <span className={isFemale ? "voice-choice-avatar female" : "voice-choice-avatar male"}>{isFemale ? "F" : "M"}</span>
                 <span className="voice-choice-copy"><strong>{parts[0]}</strong><small>{parts[1]}</small><span className="voice-choice-type">{isFemale ? copy("Female voice", "Женский голос", "Жаночы голас") : copy("Male voice", "Мужской голос", "Мужчынскі голас")}</span></span>
                 <span className="voice-choice-check">{selected ? <Check size={17} /> : null}</span>
