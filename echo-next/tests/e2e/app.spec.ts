@@ -22,7 +22,7 @@ test("ECHO brand logo and Kokoro voice selection render and persist", async ({ p
   const panel = page.getByRole("region", { name: "Local AI speech synthesis" });
   await expect(panel.getByRole("heading", { name: "Find your voice" })).toBeVisible();
   await expect(panel.locator(".voice-choice")).toHaveCount(28);
-  await panel.getByRole("button", { name: "UK English" }).click();
+  await panel.getByRole("button", { name: "UK English", exact: true }).click();
   await expect(panel.locator(".voice-choice")).toHaveCount(8);
   await panel.getByRole("button", { name: "Female", exact: true }).click();
   await expect(panel.locator(".voice-choice")).toHaveCount(4);
