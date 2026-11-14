@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Play, Search, Sparkles, Volume2 } from "lucide-react";
 import { AI_VOICES, loadLocalAIPreferences, saveLocalAIPreferences, loadLocalAI, synthesizeLocalAI, type AIVoice } from "../services/localAi";
 
 type UILanguage = "en" | "ru" | "be";
@@ -7,6 +8,13 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
   const be = language === "be";
   const [text, setText] = useState("Hello. This is a new AI-generated voice.");
   const [voice, setVoice] = useState<AIVoice>(() => loadLocalAIPreferences().voice);
+  const [voiceRegion, setVoiceRegion] = useState<"all" | "us" | "uk">("all");
+  const [voiceQuery, setVoiceQuery] = useState("");
+  const [previewingVoice, setPreviewingVoice] = useState<AIVoice | null>(null);
+  const visibleVoices = useMemo(() => AI_VOICES.filter((item) => {
+    const matchesRegion = voiceRegion === "all" || (voiceRegion === "us" ? item.label.includes("US English") : item.label.includes("UK English"));
+    return matchesRegion && item.label.toLowerCase().includes(voiceQuery.trim().toLowerCase());
+  }), [voiceRegion, voiceQuery]);
   const [status, setStatus] = useState<"unloaded" | "loading" | "ready" | "generating" | "error">("unloaded");
   const [message, setMessage] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
@@ -53,6 +61,26 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
     }
   };
 
+  const previewVoice = async (selectedVoice: AIVoice) => {
+    if (status !== "ready" || previewingVoice) return;
+    setPreviewingVoice(selectedVoice);
+    setMessage(copy("Creating a short voice preview…", "Создаю короткий образец голоса…", "Ствараю кароткі ўзор голасу…"));
+    try {
+      const sample = await synthesizeLocalAI("Hello. This is a preview of my voice.", selectedVoice);
+      if (!mountedRef.current) return;
+      audioRef.current?.pause();
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      const url = URL.createObjectURL(sample);
+      urlRef.current = url;
+      setAudioUrl(url);
+      setMessage(copy("Voice preview is ready. Press play below.", "Образец готов. Нажмите воспроизведение ниже.", "Узор гатовы. Націсніце прайграванне ніжэй."));
+    } catch (error) {
+      if (mountedRef.current) setMessage(error instanceof Error ? error.message : "Preview failed.");
+    } finally {
+      if (mountedRef.current) setPreviewingVoice(null);
+    }
+  };
+
   const generate = async () => {
     if (status !== "ready") return;
     setStatus("generating");
@@ -94,12 +122,43 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
         {copy("English text for AI", "Английский текст для ИИ", "Англійскі тэкст для ШІ")}
         <textarea rows={3} maxLength={400} value={text} onChange={(event) => setText(event.target.value)} placeholder="Type an English phrase" />
       </label>
-      <label>
-        {copy("AI voice", "Нейросетевой голос", "Голас нейрасеткі")}
-        <select aria-label={copy("Kokoro voice", "Голос Kokoro", "Голас Kokoro")} value={voice} onChange={(event) => setVoice(event.target.value as AIVoice)}>
-          {AI_VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
-        </select>
-      </label>
+      <section className="voice-picker" aria-label={copy("Choose a neural voice", "Выбор нейросетевого голоса", "Выбар голасу нейрасеткі")}>
+        <div className="voice-picker-heading">
+          <div>
+            <span className="eyebrow">{copy("VOICE LIBRARY", "БИБЛИОТЕКА ГОЛОСОВ", "БІБЛІЯТЭКА ГАЛАСОЎ")}</span>
+            <h3>{copy("Choose your voice", "Выберите голос", "Выберы голас")}</h3>
+            <p>{copy("28 studio presets · US and UK English", "28 готовых голосов · американский и британский английский", "28 гатовых галасоў · амерыканская і брытанская англійская")}</p>
+          </div>
+          <span className="voice-count">{AI_VOICES.length}</span>
+        </div>
+        <div className="voice-picker-tools">
+          <div className="voice-search">
+            <Search size={17} />
+            <input value={voiceQuery} onChange={(event) => setVoiceQuery(event.target.value)} placeholder={copy("Search voices", "Найти голос", "Знайсці голас")} aria-label={copy("Search voices", "Поиск голосов", "Пошук галасоў")} />
+          </div>
+          <div className="voice-region-tabs" role="group" aria-label={copy("Filter by accent", "Фильтр по акценту", "Фільтр па акцэнце")}>
+            {(["all", "us", "uk"] as const).map((region) => <button type="button" key={region} className={voiceRegion === region ? "active" : ""} aria-pressed={voiceRegion === region} onClick={() => setVoiceRegion(region)}>{region === "all" ? copy("All", "Все", "Усе") : region === "us" ? copy("US English", "США", "ЗША") : copy("UK English", "Британия", "Брытанія")}</button>)}
+          </div>
+        </div>
+        <div className="voice-choice-grid">
+          {visibleVoices.map((item) => {
+            const selected = voice === item.id;
+            const parts = item.label.split(" · ");
+            return <article className={selected ? "voice-choice selected" : "voice-choice"} key={item.id}>
+              <button type="button" className="voice-choice-select" aria-pressed={selected} onClick={() => setVoice(item.id)}>
+                <span className="voice-choice-wave"><Volume2 size={19} /></span>
+                <span className="voice-choice-copy"><strong>{parts[0]}</strong><small>{parts[1]} · {parts[2]}</small></span>
+                <span className="voice-choice-check">{selected ? <Check size={17} /> : null}</span>
+              </button>
+              <button type="button" className="voice-preview-button" disabled={status !== "ready" || previewingVoice !== null} onClick={() => void previewVoice(item.id)} aria-label={copy("Preview", "Прослушать", "Праслухаць") + " " + parts[0]}>
+                <Play size={14} fill="currentColor" /> {previewingVoice === item.id ? copy("Preparing", "Готовлю", "Рыхтую") : copy("Preview", "Пример", "Узор")}
+              </button>
+            </article>;
+          })}
+          {!visibleVoices.length && <p className="field-note">{copy("No voices match your search.", "По вашему запросу ничего не найдено.", "Па запыце нічога не знойдзена.")}</p>}
+        </div>
+        <p className="voice-selected-note"><Sparkles size={14} /> {copy("Selected voice", "Выбранный голос", "Абраны голас")}: <strong>{AI_VOICES.find((item) => item.id === voice)?.label}</strong></p>
+      </section>
       <div className="section-head">
         <button className="outline" type="button" disabled={status === "loading" || status === "generating"} onClick={() => void load()}>
           {status === "loading" ? copy("Loading…", "Загружается…", "Загрузка…") : copy("Load AI model", "Загрузить ИИ", "Загрузіць мадэль ШІ")}
