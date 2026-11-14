@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { Settings } from "../database/store";
+import { adaptiveSpeechSettings } from "./adaptiveSpeech";
 import {
   hasLocalAIInstallConsent,
   isLocalAIReady,
@@ -200,7 +201,11 @@ class HybridSpeech implements SpeechEngine {
         if (!isLocalAIReady()) await loadLocalAI();
         if (!isCurrentRequest()) return;
         const { voice } = loadLocalAIPreferences();
-        const audio = await synthesizeLocalAI(clean, voice);
+        const audio = await synthesizeLocalAI(
+          clean,
+          voice,
+          adaptiveSpeechSettings(clean, settings).rate,
+        );
         if (!isCurrentRequest()) return;
         await playGeneratedAudio(audio);
         return;
@@ -222,7 +227,7 @@ class HybridSpeech implements SpeechEngine {
           clean,
           prefs.voice,
           languageCode as SupertonicLanguage,
-          Math.max(0.7, Math.min(1.8, settings.rate)),
+          Math.max(0.7, Math.min(1.8, prefs.speed * settings.rate)),
           prefs.steps,
           settings.adaptiveVoice === "smart",
         );
@@ -235,7 +240,9 @@ class HybridSpeech implements SpeechEngine {
       if (!isCurrentRequest()) return;
     }
 
-    if (isCurrentRequest()) await this.system.speak(clean, settings, language);
+    if (isCurrentRequest()) {
+      await this.system.speak(clean, adaptiveSpeechSettings(clean, settings), language);
+    }
   }
 
   async stop() {
