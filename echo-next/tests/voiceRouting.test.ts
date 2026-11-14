@@ -58,7 +58,7 @@ describe("resolveVoiceRoute", () => {
       kokoroInstalled: false,
       supertonicInstalled: false,
     })).toMatchObject({
-      mode: "offline", engine: "system", requiresModelDownload: false,
+      mode: "offline", engine: "system", requiresModelDownload: true,
       recommendedDownload: "kokoro",
     });
   });
@@ -73,7 +73,7 @@ describe("resolveVoiceRoute", () => {
     expect(resolveVoiceRoute({
       ...base, language: "ru-RU", supertonicInstalled: false,
     })).toMatchObject({
-      mode: "offline", engine: "system", recommendedDownload: "supertonic",
+      mode: "offline", engine: "system", requiresModelDownload: true, recommendedDownload: "supertonic",
     });
   });
 
