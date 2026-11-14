@@ -14,6 +14,7 @@ import {
   Settings as SettingsIcon,
   ArrowUpRight,
   Volume2,
+  Play,
   Square,
   RotateCcw,
   Star,
@@ -424,7 +425,7 @@ export default function App() {
     setPreviewingSystemVoice(voice.id);
     try {
       await speech.speak(
-        t("Hello. This is a voice preview.", "Здравствуйте. Это пример голоса.", "Вітаю. Гэта прыклад голасу."),
+        t("Hello. This is a voice preview.", "Здравствуйте. Это пример голоса."),
         adaptiveSpeechSettings("Hello. This is a voice preview.", { ...s, voice: voice.id }),
         voice.language,
       );
