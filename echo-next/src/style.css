@@ -2277,3 +2277,67 @@ dialog textarea {
   .system-voice-filters button { flex: 1; }
   .system-voice-count { width: 100%; }
 }
+
+
+.supertonic-picker-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.supertonic-picker-heading p {
+  margin-top: 4px;
+  font-size: 0.7rem;
+}
+.supertonic-style-count {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  height: 38px;
+  padding: 0 8px;
+  border-radius: 11px;
+  color: var(--accent);
+  background: var(--tint);
+  font-size: 0.77rem;
+  font-weight: 750;
+}
+.supertonic-voice-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.supertonic-voice-filters button {
+  flex: 1;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font-size: 0.72rem;
+}
+.supertonic-voice-filters button.active {
+  color: var(--accent);
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+}
+.supertonic-selected-style {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
+  border-radius: 11px;
+  background: var(--tint);
+  font-size: 0.73rem;
+}
+.supertonic-selected-style span { color: var(--muted); }
+.supertonic-selected-style strong { color: var(--accent); }
+@media (max-width: 700px) {
+  .supertonic-picker-heading { align-items: flex-start; }
+  .supertonic-voice-filters button { min-height: 42px; }
+}
