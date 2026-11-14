@@ -19,7 +19,7 @@ const phraseSchema = z.object({
   text: z.string().trim().min(1).max(2000),
   categoryId: z.string().max(100),
   favorite: z.boolean(),
-  language: z.enum(["en", "ru"]),
+  language: z.enum(["en", "ru", "be"]),
   order: z.number().int().nonnegative(),
 });
 const profileSchema = z.object({
