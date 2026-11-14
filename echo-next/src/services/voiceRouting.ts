@@ -1,3 +1,5 @@
+import { SUPERTONIC_LANGUAGES as SUPPORTED_SUPERTONIC_LANGUAGES } from "./supertonic";
+
 /**
  * Central policy for choosing ECHO's speech route.
  *
@@ -31,11 +33,9 @@ export type VoiceRoute = {
   recommendedDownload?: "supertonic" | "kokoro";
 };
 
-const SUPERTONIC_LANGUAGES = new Set([
-  "en", "ko", "ja", "ar", "bg", "cs", "da", "de", "el", "es", "et",
-  "fi", "fr", "hi", "hr", "hu", "id", "it", "lt", "lv", "nl", "pl",
-  "pt", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "vi",
-]);
+const SUPERTONIC_LANGUAGES = new Set(
+  SUPPORTED_SUPERTONIC_LANGUAGES.map(([code]) => code),
+);
 
 function primaryLanguage(language: string): string {
   return language.trim().replaceAll("_", "-").split("-")[0].toLowerCase();
