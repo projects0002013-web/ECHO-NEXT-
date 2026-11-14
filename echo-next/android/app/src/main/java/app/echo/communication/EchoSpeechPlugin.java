@@ -44,9 +44,22 @@ public class EchoSpeechPlugin extends Plugin {
     });}
     @PluginMethod public void speak(PluginCall call){run(call,()->{
         stopInternal();String text=call.getString("text","");if(text.trim().isEmpty()||text.length()>2000){call.reject("Enter 1–2000 characters.");return;}
-        Locale locale=Locale.forLanguageTag(call.getString("language","en-US"));int status=tts.setLanguage(locale);
+        Locale locale=Locale.forLanguageTag(call.getString("language","en-US"));
+        int status=tts.setLanguage(locale);
         if(status==TextToSpeech.LANG_MISSING_DATA||status==TextToSpeech.LANG_NOT_SUPPORTED){call.reject("Install the requested language in Android text-to-speech settings.");return;}
-        String selected=call.getString("voice","");Set<Voice> voices=tts.getVoices();if(voices!=null)for(Voice v:voices)if(v.getName().equals(selected))tts.setVoice(v);
+        String requestedLanguage=locale.getLanguage();
+        String selected=call.getString("voice","");
+        Set<Voice> voices=tts.getVoices();
+        Voice matching=null;
+        if(voices!=null){
+            for(Voice v:voices){
+                if(!requestedLanguage.equalsIgnoreCase(v.getLocale().getLanguage()))continue;
+                if(v.getName().equals(selected)){matching=v;break;}
+                if(matching==null||(!v.isNetworkConnectionRequired()&&matching.isNetworkConnectionRequired()))matching=v;
+            }
+            if(matching==null){call.reject("No installed Android speech voice for "+locale.toLanguageTag()+". Install a matching language pack.");return;}
+            tts.setVoice(matching);
+        }
         tts.setSpeechRate(call.getFloat("rate",1f));tts.setPitch(call.getFloat("pitch",1f));
         AudioAttributes attrs=new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build();
         tts.setAudioAttributes(attrs);
