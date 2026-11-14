@@ -48,7 +48,7 @@ test("Supertonic voice preferences survive a full app reload", async ({ page }) 
   await page.goto("./");
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const panel = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
-  await panel.getByLabel("Neural voice style").selectOption("M3");
+  await panel.getByRole("button", { name: "Male M3" }).click();
   await panel.getByLabel("Speech language").selectOption("ru");
   await panel.getByLabel("Quality steps").selectOption("12");
   await panel.getByLabel("Adaptive pacing").uncheck();
@@ -59,7 +59,7 @@ test("Supertonic voice preferences survive a full app reload", async ({ page }) 
   await page.reload();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const restored = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
-  await expect(restored.getByLabel("Neural voice style")).toHaveValue("M3");
+  await expect(restored.getByRole("button", { name: "Male M3" })).toHaveAttribute("aria-pressed", "true");
   await expect(restored.getByLabel("Speech language")).toHaveValue("ru");
   await expect(restored.getByLabel("Quality steps")).toHaveValue("12");
   await expect(restored.getByLabel("Adaptive pacing")).not.toBeChecked();
