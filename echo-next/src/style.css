@@ -2399,3 +2399,8 @@ dialog textarea {
   .voice-model-load { max-width: 100%; white-space: normal; }
   .voice-generate-actions .primary { width: 100%; }
 }
+
+:root[data-theme="dark"] .voice-model-load,
+:root[data-theme="dark"] .voice-model-load:hover {
+  color: #101218;
+}
