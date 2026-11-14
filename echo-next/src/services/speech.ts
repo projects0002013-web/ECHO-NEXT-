@@ -188,6 +188,7 @@ class HybridSpeech implements SpeechEngine {
       supertonicInstalled,
       kokoroInstalled,
       systemVoiceAvailable,
+      modePreference: settings.speechMode,
       preferredOfflineEngine: settings.speechMode === "system" ? "system" : undefined,
     });
 
