@@ -34,14 +34,22 @@ export class BrowserSpeech implements SpeechEngine {
         "Speech is unavailable in this browser. Try Android or a browser with text-to-speech support.",
       );
     speechSynthesis.cancel();
+    const requestedLocale = speechLocale(language);
+    const requestedLanguage = requestedLocale.split("-")[0].toLowerCase();
+    const availableVoices = speechSynthesis.getVoices();
+    const matchingVoices = availableVoices.filter(
+      (v) => v.lang.toLowerCase().split("-")[0] === requestedLanguage,
+    );
+    if (availableVoices.length > 0 && matchingVoices.length === 0) {
+      throw new Error(`No installed speech voice for ${requestedLocale}. Install that language pack or choose another language.`);
+    }
     return new Promise<void>((resolve, reject) => {
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = speechLocale(language);
+      u.lang = requestedLocale;
       u.rate = s.rate;
       u.pitch = s.pitch;
-      const voice = speechSynthesis
-        .getVoices()
-        .find((v) => v.voiceURI === s.voice);
+      const selectedVoice = matchingVoices.find((v) => v.voiceURI === s.voice);
+      const voice = selectedVoice ?? matchingVoices.find((v) => v.localService) ?? matchingVoices[0];
       if (voice) u.voice = voice;
       u.onend = () => resolve();
       u.onerror = (e) =>
