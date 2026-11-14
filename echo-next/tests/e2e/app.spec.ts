@@ -13,6 +13,19 @@ function logOfflineErrors(page: Page) {
       console.info("ECHO_BROWSER_CONSOLE", message.text());
   });
 }
+test("Kokoro voice selection survives leaving and reopening Voice Studio", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  const panel = page.getByRole("region", { name: "Local AI speech synthesis" });
+  await panel.getByLabel("Kokoro voice").selectOption("bf_emma");
+  await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).getByLabel("Kokoro voice")).toHaveValue("bf_emma");
+  await page.reload();
+  await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).getByLabel("Kokoro voice")).toHaveValue("bf_emma");
+});
+
 test("Supertonic voice preferences survive a full app reload", async ({ page }) => {
   await page.goto("./");
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
