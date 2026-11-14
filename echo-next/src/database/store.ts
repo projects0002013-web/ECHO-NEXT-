@@ -2,7 +2,7 @@ import { openDB } from "idb";
 import { z } from "zod";
 export const settingsSchema = z.object({
   theme: z.enum(["light", "dark", "system"]),
-  language: z.enum(["en", "ru"]),
+  language: z.enum(["en", "ru", "be"]),
   rate: z.number().min(0.5).max(2),
   pitch: z.number().min(0.5).max(2),
   voice: z.string().max(500),
@@ -98,7 +98,7 @@ export function initialState(): State {
           text,
           categoryId: `c${i}`,
           favorite: i === 0 && j < 3,
-          language: "en" as "en" | "ru",
+          language: "en" as "en" | "ru" | "be",
           order: j,
         })),
       )
