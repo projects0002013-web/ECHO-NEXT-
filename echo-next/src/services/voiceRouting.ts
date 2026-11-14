@@ -78,7 +78,7 @@ export function resolveVoiceRoute(input: VoiceRouteInput): VoiceRoute {
   const language = primaryLanguage(input.language);
   const preferred = input.preferredOfflineEngine;
 
-  if (preferred === "system" && input.systemVoiceAvailable) {
+  if (preferred === "system") {
     return systemFallback(input);
   }
 
