@@ -166,6 +166,8 @@ export default function App() {
     "Backup & restore": "Рэзервовая копія і аднаўленне", "Export backup": "Экспартаваць копію",
     "Restore backup": "Аднавіць копію", "Privacy & your data": "Прыватнасць і твае даныя",
     "Delete all personal data": "Выдаліць усе асабістыя даныя",
+    "My personal space": "Мая асабістая прастора",
+    "Recording name": "Назва запісу",
     "Adaptive pacing": "Адаптыўны тэмп",
     "Off": "Выключана",
     "Smart pacing": "Разумны тэмп",
