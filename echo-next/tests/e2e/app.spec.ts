@@ -426,3 +426,29 @@ test("deep links, browser history and first-load offline assets", async ({
     page.getByRole("heading", { name: "Library", exact: true }),
   ).toBeVisible();
 });
+
+
+test("a first phrase can be saved after personal data has been cleared", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Delete all personal data" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm", exact: true }).click();
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await page.getByRole("button", { name: "New phrase", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText(/General category will be created automatically/i)).toBeVisible();
+  await dialog.getByRole("textbox", { name: "Phrase", exact: true }).fill("A fresh start");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("button", { name: "A fresh start", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Library", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Rename General" })).toBeVisible();
+});
+
+test("mobile composer keeps voice selection and speaking controls easy to reach", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("./");
+  await expect(page.locator(".composer-shortcut")).toBeVisible();
+  await expect(page.locator(".voice-chip")).toBeVisible();
+  await expect(page.locator(".composer-actions .primary")).toBeVisible();
+  await expect(page.locator(".composer-actions .primary")).toHaveCSS("min-height", "46px");
+});
