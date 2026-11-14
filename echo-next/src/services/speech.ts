@@ -39,7 +39,7 @@ export interface SpeechEngine {
   stop(): Promise<void>;
 }
 
-class BrowserSpeech implements SpeechEngine {
+export class BrowserSpeech implements SpeechEngine {
   async voices() {
     if (!("speechSynthesis" in globalThis)) return [];
     return speechSynthesis.getVoices().map((v) => ({
