@@ -28,7 +28,6 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
   const [progress, setProgress] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
   const [cacheStatus, setCacheStatus] = useState<SupertonicCacheStatus>({ available: true, modelFilesCached: 0, modelFilesTotal: 6, voiceStylesCached: 0, voiceStylesTotal: 10, complete: false });
-  const [persistentStorage, setPersistentStorage] = useState<boolean | null>(null);
   const cached = cacheStatus.complete;
   const hasPartialCache = cacheStatus.modelFilesCached > 0 || cacheStatus.voiceStylesCached > 0;
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -81,7 +80,6 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
         ));
       }
       const estimate = await modelStorageEstimate();
-      setPersistentStorage(estimate.persistent);
       if (!before.complete && before.modelFilesCached === 0 && before.voiceStylesCached === 0 &&
           estimate.available !== undefined && estimate.available < 420 * 1024 * 1024) {
         throw new Error(copy(
@@ -107,7 +105,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
       ));
       setStatus("ready");
       setProgress("");
-      setMessage(persistentStorage
+      setMessage(estimate.persistent
         ? copy("Supertonic 3 is ready. All model files are saved with persistent browser storage.", "Supertonic 3 готова. Все файлы сохранены в постоянном хранилище браузера.", "Supertonic 3 гатовая. Усе файлы захаваныя ў пастаянным сховішчы браўзера.")
         : copy("Supertonic 3 is saved locally, but the browser did not grant persistent-storage protection. It may clear cached files if device storage becomes low. Do not clear ECHO site/app data.", "Supertonic 3 сохранена локально, но браузер не предоставил защиту постоянного хранилища. При нехватке памяти он может очистить кэш. Не очищайте данные ECHO.", "Supertonic 3 захаваная лакальна, але браўзер не даў абарону пастаяннага сховішча. Пры недахопе памяці ён можа ачысціць кэш. Не ачышчай даныя ECHO."));
     } catch (error) {
