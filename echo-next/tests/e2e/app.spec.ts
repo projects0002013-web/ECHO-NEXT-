@@ -47,6 +47,7 @@ test("phrase lifecycle, persistence, favorites, theme, language and backup", asy
     .getByRole("dialog")
     .getByRole("button", { name: "Save", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toBeHidden();
   await page.getByRole("textbox", { name: "Search phrases" }).fill("edited");
   await expect(
     page.getByRole("button", { name: "My edited phrase" }),
