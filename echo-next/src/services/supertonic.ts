@@ -103,6 +103,12 @@ export async function loadSupertonic(
       // Cache every small preset style during the explicit model install so
       // any selected voice remains available after the device goes offline.
       await runtime.loadVoiceStyle(SUPERTONIC_VOICES.map((voice) => `${VOICE_DIR}/${voice}.json`));
+      const cacheStatus = await getSupertonicCacheStatus();
+      if (!cacheStatus.complete) {
+        throw new Error(
+          `Supertonic loaded, but only ${cacheStatus.modelFilesCached}/${cacheStatus.modelFilesTotal} model files and ${cacheStatus.voiceStylesCached}/${cacheStatus.voiceStylesTotal} voice styles were saved locally. Check device storage and retry; cached files will be reused.`,
+        );
+      }
       return { tts: result.textToSpeech, runtime };
     })().catch((error) => {
       enginePromise = undefined;
@@ -147,13 +153,49 @@ export async function synthesizeSupertonic(
   return new Blob([buffer], { type: "audio/wav" });
 }
 
+const REQUIRED_ONNX_FILES = [
+  "duration_predictor.onnx", "text_encoder.onnx", "vector_estimator.onnx",
+  "vocoder.onnx", "tts.json", "unicode_indexer.json",
+] as const;
+
+export type SupertonicCacheStatus = {
+  available: boolean;
+  modelFilesCached: number;
+  modelFilesTotal: number;
+  voiceStylesCached: number;
+  voiceStylesTotal: number;
+  complete: boolean;
+};
+
+export async function getSupertonicCacheStatus(): Promise<SupertonicCacheStatus> {
+  const empty: SupertonicCacheStatus = {
+    available: false, modelFilesCached: 0, modelFilesTotal: REQUIRED_ONNX_FILES.length,
+    voiceStylesCached: 0, voiceStylesTotal: SUPERTONIC_VOICES.length, complete: false,
+  };
+  if (typeof caches === "undefined") return empty;
+  try {
+    const cache = await caches.open("echo-supertonic-3-v1");
+    const [modelFiles, voiceFiles] = await Promise.all([
+      Promise.all(REQUIRED_ONNX_FILES.map((file) => cache.match(`${ONNX_DIR}/${file}`))),
+      Promise.all(SUPERTONIC_VOICES.map((voice) => cache.match(`${VOICE_DIR}/${voice}.json`))),
+    ]);
+    const modelFilesCached = modelFiles.filter(Boolean).length;
+    const voiceStylesCached = voiceFiles.filter(Boolean).length;
+    return {
+      available: true,
+      modelFilesCached,
+      modelFilesTotal: REQUIRED_ONNX_FILES.length,
+      voiceStylesCached,
+      voiceStylesTotal: SUPERTONIC_VOICES.length,
+      complete: modelFilesCached === REQUIRED_ONNX_FILES.length && voiceStylesCached === SUPERTONIC_VOICES.length,
+    };
+  } catch {
+    return empty;
+  }
+}
+
 export async function isSupertonicModelCached(): Promise<boolean> {
-  if (typeof caches === "undefined") return false;
-  const cache = await caches.open("echo-supertonic-3-v1");
-  const required = ["duration_predictor.onnx", "text_encoder.onnx", "vector_estimator.onnx", "vocoder.onnx", "tts.json", "unicode_indexer.json"];
-  const modelFiles = await Promise.all(required.map((file) => cache.match(`${ONNX_DIR}/${file}`)));
-  const voiceFiles = await Promise.all(SUPERTONIC_VOICES.map((voice) => cache.match(`${VOICE_DIR}/${voice}.json`)));
-  return modelFiles.every(Boolean) && voiceFiles.every(Boolean);
+  return (await getSupertonicCacheStatus()).complete;
 }
 
 export async function removeSupertonicModel(): Promise<void> {
