@@ -1308,37 +1308,49 @@ export default function App() {
                       {t("Save profile", "Сохранить профиль")}
                     </button>
                   </div>
-                  {state.profiles.map((p) => (
-                    <div className="category-row" key={p.id}>
-                      <button
-                        onClick={() =>
-                          update((v) => ({
-                            ...v,
-                            settings: {
-                              ...v.settings,
-                              voice: p.voice,
-                              rate: p.rate,
-                              pitch: p.pitch,
-                            },
-                          }))
-                        }
-                      >
-                        {p.name}
-                      </button>
-                      <button
-                        className="icon"
-                        aria-label={t("Delete profile", "Удалить профиль")}
-                        onClick={() =>
-                          update((v) => ({
-                            ...v,
-                            profiles: v.profiles.filter((x) => x.id !== p.id),
-                          }))
-                        }
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
+                  {state.profiles.map((p) => {
+                    const selected =
+                      p.voice === s.voice && p.rate === s.rate && p.pitch === s.pitch;
+                    return (
+                      <div className="category-row voice-profile-row" key={p.id}>
+                        <button
+                          className={selected ? "text-button voice-profile-select active" : "text-button voice-profile-select"}
+                          aria-pressed={selected}
+                          onClick={() =>
+                            update((v) => ({
+                              ...v,
+                              settings: {
+                                ...v.settings,
+                                voice: p.voice,
+                                rate: p.rate,
+                                pitch: p.pitch,
+                              },
+                            }))
+                          }
+                        >
+                          {p.name}
+                          {selected && <Check size={15} />}
+                          {selected && <small>{t("Currently active", "Сейчас используется")}</small>}
+                        </button>
+                        <button
+                          className="icon"
+                          aria-label={t("Delete profile", "Удалить профиль")}
+                          onClick={() =>
+                            setConfirm({
+                              message: t("Delete this voice profile?", "Удалить этот профиль голоса?"),
+                              action: () =>
+                                update((v) => ({
+                                  ...v,
+                                  profiles: v.profiles.filter((x) => x.id !== p.id),
+                                })),
+                            })
+                          }
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </section>
                 <section className="panel">
                   <div className="section-head">
