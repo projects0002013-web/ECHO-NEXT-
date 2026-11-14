@@ -1779,7 +1779,7 @@ export default function App() {
               </button>
               <button
                 className="primary"
-                disabled={false}
+                
               >
                 <Check size={17} />
                 {t("Save", "Сохранить")}
