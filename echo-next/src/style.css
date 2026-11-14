@@ -1824,3 +1824,89 @@ dialog textarea {
   .voice-choice-grid { grid-template-columns: 1fr; }
   .voice-choice { grid-template-columns: minmax(0, 1fr) auto; }
 }
+
+
+.system-voice-picker {
+  display: grid;
+  gap: 10px;
+}
+.system-voice-list {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 3px;
+}
+.system-voice-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.system-voice-option.selected {
+  border-color: var(--accent);
+  background: var(--tint);
+}
+.system-voice-option > button {
+  border: 0;
+  background: transparent;
+}
+.system-voice-select {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 2px;
+}
+.system-voice-select:hover { background: transparent; }
+.system-voice-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 10px;
+  color: var(--accent);
+  background: var(--tint);
+}
+.system-voice-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.system-voice-copy strong {
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.system-voice-copy small { font-size: 0.68rem; }
+.system-voice-check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: white;
+}
+.system-voice-option.selected .system-voice-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.system-voice-preview {
+  min-height: 36px;
+  padding: 6px 9px;
+  border-radius: 9px;
+  color: var(--accent);
+  font-size: 0.7rem;
+}
+@media (max-width: 700px) {
+  .system-voice-list { max-height: 340px; }
+  .system-voice-option { padding: 8px; }
+}
