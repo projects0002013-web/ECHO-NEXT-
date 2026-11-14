@@ -444,7 +444,7 @@ test("a first phrase can be saved after personal data has been cleared", async (
   await page.getByRole("button", { name: "Delete all personal data" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Confirm", exact: true }).click();
   await page.getByRole("button", { name: "Home", exact: true }).click();
-  await page.getByRole("button", { name: "New phrase", exact: true }).click();
+  await page.getByRole("button", { name: "New phrase", exact: true }).first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText(/General category will be created automatically/i)).toBeVisible();
   await dialog.getByRole("textbox", { name: "Phrase", exact: true }).fill("A fresh start");
