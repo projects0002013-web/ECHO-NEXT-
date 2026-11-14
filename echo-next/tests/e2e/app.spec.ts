@@ -124,6 +124,7 @@ test("phrase lifecycle, persistence, favorites, theme, language and backup", asy
     page.getByRole("button", { name: "My test phrase", exact: true }),
   ).toBeVisible();
   await page.reload();
+  await expect(page.getByRole("heading", { name: "Make yourself heard." })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "My test phrase", exact: true }),
   ).toBeVisible();
