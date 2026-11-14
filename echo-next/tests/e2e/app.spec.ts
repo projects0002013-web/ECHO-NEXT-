@@ -21,11 +21,9 @@ test("Supertonic voice preferences survive a full app reload", async ({ page }) 
   await panel.getByLabel("Speech language").selectOption("ru");
   await panel.getByLabel("Quality steps").selectOption("12");
   await panel.getByLabel("Adaptive pacing").uncheck();
-  await panel.getByLabel("Speech speed").evaluate((element: HTMLInputElement) => {
-    element.value = "1.35";
-    element.dispatchEvent(new Event("input", { bubbles: true }));
-    element.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  const speedControl = panel.getByLabel("Speech speed");
+  await speedControl.focus();
+  for (let step = 0; step < 7; step++) await speedControl.press("ArrowRight");
   await expect(panel.getByLabel("Speech speed")).toHaveValue("1.35");
   await page.reload();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
@@ -51,7 +49,7 @@ test("cached Supertonic files are offered for reload after app restart", async (
   await page.reload();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const panel = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
-  await expect(panel.getByText("Cached")).toBeVisible();
+  await expect(panel.getByText("Cached", { exact: true })).toBeVisible();
   await expect(panel.getByRole("button", { name: "Load cached model" })).toBeEnabled();
 });
 
