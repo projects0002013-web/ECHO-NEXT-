@@ -146,6 +146,8 @@ export default function App() {
   const [systemVoiceAvailability, setSystemVoiceAvailability] = useState<"all" | "offline" | "online">("all");
   const s = state.settings;
   const be: Record<string, string> = {
+    "Voice engine shortcuts": "Хуткі пераход да галасавых рухавікоў",
+    "System TTS": "Сістэмны голас", "My recordings": "Мае запісы",
     "General": "Агульнае", "Currently active": "Зараз выкарыстоўваецца",
     "Tip: press Ctrl/⌘ + Enter to speak": "Падказка: Ctrl/⌘ + Enter — агучыць",
     "Home": "Галоўная", "Communicate": "Зносіны", "Voice Studio": "Студыя голасу",
@@ -1186,7 +1188,13 @@ export default function App() {
           )}
           {page === "voice" && (
             <>
-              <div className="voice-overview panel">
+              <nav className="voice-engine-nav" aria-label={t("Voice engine shortcuts", "Быстрый переход к голосовым движкам")}>
+                <a href="#system-voice-engine">{t("System TTS", "Системный голос")}</a>
+                <a href="#recorded-voice-panel">{t("My recordings", "Мои записи")}</a>
+                <a href="#kokoro-voice-engine">Kokoro</a>
+                <a href="#supertonic-voice-engine">Supertonic</a>
+              </nav>
+              <div className="voice-overview panel" id="system-voice-engine">
                 <span className="large-wave">
                   <AudioLines size={36} />
                 </span>
@@ -1354,7 +1362,7 @@ export default function App() {
                     );
                   })}
                 </section>
-                <section className="panel">
+                <section className="panel" id="recorded-voice-panel">
                   <div className="section-head">
                     <h2>{t("Recorded voice", "Записи голоса")}</h2>
                     <Mic size={20} />
