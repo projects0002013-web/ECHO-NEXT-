@@ -16,7 +16,7 @@ function logOfflineErrors(page: Page) {
 test("ECHO brand logo and Kokoro voice selection render and persist", async ({ page }) => {
   await page.goto("./");
   const brandLogo = page.locator(".brand-mark-logo img").first();
-  await expect(brandLogo).toHaveAttribute("src", /icon\\.svg$/);
+  await expect(brandLogo).toHaveAttribute("src", /icon\.svg$/);
   await expect.poll(() => brandLogo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const panel = page.getByRole("region", { name: "Local AI speech synthesis" });
