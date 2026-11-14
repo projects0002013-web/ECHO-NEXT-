@@ -86,6 +86,10 @@ export async function loadLocalAI(): Promise<Model> {
   return modelPromise;
 }
 
+export function normalizeLocalAISpeed(speed: number): number {
+  return Number.isFinite(speed) ? Math.max(0.5, Math.min(2, speed)) : 1;
+}
+
 export function validateAIText(value: string): string {
   const text = value.trim();
   if (!text || text.length > 400)
@@ -101,8 +105,7 @@ export async function synthesizeLocalAI(value: string, voice: AIVoice, speed = 1
   if (!AI_VOICES.some((v) => v.id === voice))
     throw new Error("Unknown AI voice.");
   const model = await loadLocalAI();
-  const safeSpeed = Number.isFinite(speed) ? Math.max(0.5, Math.min(2, speed)) : 1;
-  const audio = await model.generate(text, { voice, speed: safeSpeed });
+  const audio = await model.generate(text, { voice, speed: normalizeLocalAISpeed(speed) });
   const blob = audio.toBlob();
   if (!blob.size) throw new Error("The AI model returned empty audio.");
   return blob;
