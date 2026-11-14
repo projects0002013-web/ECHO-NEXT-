@@ -861,7 +861,8 @@ export default function App() {
                     <div className="phrase-grid">
                       {state.phrases
                         .filter((p) => p.favorite)
-                        .slice(0, 6)
+                        .slice(-6)
+                        .reverse()
                         .map(card)}
                     </div>
                     {!state.phrases.some((p) => p.favorite) && empty()}
