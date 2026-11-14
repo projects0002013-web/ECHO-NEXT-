@@ -1,16 +1,34 @@
-# Personalized voice: integration decision
+# ECHO NEXT — AI speech (experimental)
 
-Status: no AI model/provider is installed or connected. No samples are uploaded. Recorded clips are ordinary playback; Android TTS is independent. `src/services/ai.ts` defines a provider contract with processing location, explicit consent, cancellation, progress and data deletion. Request validation is tested. A future integration still needs a provider adapter, consent UI, model verification, encrypted sample handling where appropriate, generation/cache persistence and deletion tests. The current UI correctly shows “Not configured”.
+## Implemented: local neural TTS (Kokoro)
 
-## Offline Android candidates reviewed on 2026-11-12
+The Voice Studio contains **real on-device neural speech synthesis** using [Kokoro JS](https://github.com/hexgrad/kokoro). This is not an API mock and not prerecorded phrase playback.
 
-Primary sources reviewed:
+- Select **Voice Studio → Load AI model** (first use requires a download and free RAM).
+- Enter a short **English** phrase (max 400 characters), select one of four model voices and choose **Generate speech**.
+- Output is newly generated WAV audio; playback uses an accessible native audio player.
+- The model is loaded only when requested via dynamic import and q8 WASM inference. Inference occurs on the user's device. Model weights are initially obtained from the public model host; phrases and personal recordings are not uploaded for inference.
+- The exact download size, startup delay and repeat-use offline behavior vary by device and cache availability. Do not claim guaranteed offline inference without first downloading and testing the model.
+- Web and Android performance differ; native Android WebView speech generation has **not been device-tested**. Low-memory devices can fail to load the model. System TTS continues functioning independently.
 
-- [sherpa-onnx project](https://github.com/k2-fsa/sherpa-onnx): Android targets, offline TTS and voice-cloning examples, including Pocket TTS. Its model/engine support is evidence of a possible integration path, not proof this application or a particular phone can run it.
-- [Pocket TTS](https://github.com/kyutai-labs/pocket-tts): upstream describes a CPU-oriented 100M parameter model, audio streaming, two CPU cores, and first-chunk latency around 200 ms measured in its own setup. Its approximately 6× real-time result is for a MacBook Air M4 and **must not be extrapolated to Android**. Upstream also lists smaller English models. Language and cloning capabilities must be checked for each selected variant.
+**Important:** these are stock AI voices, **not a clone of a user's personal voice**. Russian and Kazakh must use the existing system TTS until a verified multilingual neural model is integrated. Do not pretend recording and playback equals voice cloning.
 
-A 100M parameter model requires roughly 400 MB for FP32 weights alone or 100 MB at INT8, before decoder weights, tensors, runtime and audio buffers. These are arithmetic lower bounds, not download sizes or measured peak RAM. Runtime support, quantization quality, model license, speaker/sample rights, Russian language support, thermal throttling and per-device latency remain unresolved.
+## How to verify
 
-Recommended next experiment: a separate arm64 Android spike using sherpa-onnx with a supported model. Download only after explicit model selection; verify hashes and licenses, store outside the APK, provide deletion, benchmark on physical low/mid/high-end devices (at least 4/6/8 GB RAM classes), record cold start, peak RSS, first audio latency, real-time factor for 20/100-word phrases, battery and 10-minute thermal behavior. Keep system TTS as the default and fallback. Do not bundle desktop Python/PyTorch/CUDA or untested large weights into the app.
+1. Run `npm ci && npm run typecheck && npm test && npm run build`.
+2. Open the app in a Chromium browser, go to Voice Studio, click Load AI model while online.
+3. Generate `Hello, this is ECHO.` in two voices; listen for distinct newly produced audio. Confirm **no microphone permission** is needed.
+4. Try empty text, >400 characters, and Cyrillic; each must fail without a network generation request.
+5. Turn off the connection after first successful download and verify again, documenting whether local model artifacts remain cached. Never assume caching on every device.
+6. Test regular system TTS and recording to confirm unchanged functionality.
+7. Separately benchmark Android before declaring offline AI support on phones.
 
-No Android inference benchmark, personalized synthesis or Russian voice cloning has been verified in this task.
+Automated CI covers input validation, TypeScript, the browser UI and existing AAC features. **It does not execute real multi-megabyte ONNX model inference or verify audible output.**
+
+## Future: personal voice synthesis
+
+`src/services/ai.ts` defines the contract for a future consent-based personal voice provider. To clone a personal voice, a real verified model and explicit authorization from the speaker are necessary. Never upload someone's recording without permission. Cloud voice services require a protected backend and must never embed secret API keys in this web app. Personal voice cloning is **not implemented**.
+
+## Previously investigated Android candidates
+
+The project also reviewed [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) and [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) for mobile inference. They need independent ARM64 benchmarks, licensing review, and explicit consent for samples before use. Existing system TTS remains the reliable fallback.

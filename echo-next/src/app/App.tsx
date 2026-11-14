@@ -63,6 +63,7 @@ import {
 } from "../database/store";
 import { speech, type Voice } from "../services/speech";
 import { VoiceRecorder } from "../services/recorder";
+import LocalAiVoicePanel from "./LocalAiVoicePanel";
 type Page = "home" | "communicate" | "voice" | "library" | "settings";
 type Editor =
   | { kind: "phrase"; value?: Phrase }
@@ -1244,33 +1245,7 @@ export default function App() {
                   )}
                 </section>
               </div>
-              <section className="panel ai-panel">
-                <span className="ai-symbol">
-                  <AudioLines size={24} />
-                </span>
-                <div>
-                  <div className="section-head">
-                    <h2>
-                      {t("Personalized AI voice", "Персональный AI-голос")}
-                    </h2>
-                    <span className="badge">
-                      {t("Not configured", "Не настроен")}
-                    </span>
-                  </div>
-                  <p>
-                    {t(
-                      "A future voice, built around you. No synthesis provider is connected. System speech and recordings work independently.",
-                      "Голос с вашим звучанием. Провайдер синтеза не подключён. Системная речь и записи работают независимо.",
-                    )}
-                  </p>
-                  <small>
-                    {t(
-                      "No samples are uploaded. A provider integration and explicit consent are required before any processing.",
-                      "Образцы не загружаются. Для обработки требуется подключение провайдера и явное согласие.",
-                    )}
-                  </small>
-                </div>
-              </section>
+              <LocalAiVoicePanel language={s.language} />
             </>
           )}
           {page === "settings" && (
