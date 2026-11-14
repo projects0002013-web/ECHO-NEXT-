@@ -140,6 +140,8 @@ export default function App() {
     lastText = useRef(""),
     audio = useRef<HTMLAudioElement>(null);
   const [voiceFilter, setVoiceFilter] = useState("");
+  const [systemVoiceQuery, setSystemVoiceQuery] = useState("");
+  const [previewingSystemVoice, setPreviewingSystemVoice] = useState("");
   const s = state.settings;
   const be: Record<string, string> = {
     "Home": "Галоўная", "Communicate": "Зносіны", "Voice Studio": "Студыя голасу",
@@ -415,6 +417,21 @@ export default function App() {
       setNotice((e as Error).message);
     } finally {
       if (id === speakId.current) setSpeaking(false);
+    }
+  }
+  async function previewSystemVoice(voice: Voice) {
+    if (previewingSystemVoice) return;
+    setPreviewingSystemVoice(voice.id);
+    try {
+      await speech.speak(
+        t("Hello. This is a voice preview.", "Здравствуйте. Это пример голоса.", "Вітаю. Гэта прыклад голасу."),
+        adaptiveSpeechSettings("Hello. This is a voice preview.", { ...s, voice: voice.id }),
+        voice.language,
+      );
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setPreviewingSystemVoice("");
     }
   }
   async function stop() {
@@ -1193,27 +1210,32 @@ export default function App() {
                       ))}
                     </select>
                   </label>
-                  <label>
-                    {t("System voice", "Системный голос")}
-                    <select
-                      value={s.voice}
-                      onChange={(e) => setting("voice", e.target.value)}
-                    >
-                      <option value="">
-                        {t("Device default", "По умолчанию")}
-                      </option>
-                      {voices
-                        .filter(
-                          (v) => !voiceFilter || v.language === voiceFilter,
-                        )
-                        .map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.name} · {v.language}
-                            {v.local ? " · offline" : ""}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
+                  <div className="system-voice-picker">
+                    <label>
+                      {t("System voice", "Системный голос")}
+                      <input value={systemVoiceQuery} onChange={(e) => setSystemVoiceQuery(e.target.value)} placeholder={t("Search installed voices", "Поиск установленных голосов")} />
+                    </label>
+                    <div className="system-voice-list">
+                      <button type="button" className={!s.voice ? "system-voice-option selected" : "system-voice-option"} aria-pressed={!s.voice} onClick={() => setting("voice", "")}>
+                        <span className="system-voice-icon"><Volume2 size={18} /></span>
+                        <span className="system-voice-copy"><strong>{t("Device default", "По умолчанию")}</strong><small>{t("Let the device choose", "Выбор устройства")}</small></span>
+                        <span className="system-voice-check">{!s.voice ? <Check size={16} /> : null}</span>
+                      </button>
+                      {voices.filter((v) => (!voiceFilter || v.language === voiceFilter) && (v.name + " " + v.language).toLowerCase().includes(systemVoiceQuery.trim().toLowerCase())).map((v) => (
+                        <div className={s.voice === v.id ? "system-voice-option selected" : "system-voice-option"} key={v.id}>
+                          <button type="button" className="system-voice-select" aria-pressed={s.voice === v.id} onClick={() => setting("voice", v.id)}>
+                            <span className="system-voice-icon"><Volume2 size={18} /></span>
+                            <span className="system-voice-copy"><strong>{v.name}</strong><small>{v.language} · {v.local ? t("Offline", "Офлайн") : t("May need internet", "Может требовать интернет")}</small></span>
+                            <span className="system-voice-check">{s.voice === v.id ? <Check size={16} /> : null}</span>
+                          </button>
+                          <button type="button" className="system-voice-preview" disabled={Boolean(previewingSystemVoice)} onClick={() => void previewSystemVoice(v)} aria-label={t("Preview voice", "Прослушать голос") + " " + v.name}>
+                            <Play size={14} fill="currentColor" /> {previewingSystemVoice === v.id ? t("Playing", "Звучит") : t("Preview", "Пример")}
+                          </button>
+                        </div>
+                      ))}
+                      {!voices.length && <p className="field-note">{t("No installed voices found. Install a speech engine or language pack in device settings.", "Установленные голоса не найдены. Добавьте движок речи или языковой пакет в настройках устройства.")}</p>}
+                    </div>
+                  </div>
                   <p className="field-note">
                     {voices.length
                       ? t(
