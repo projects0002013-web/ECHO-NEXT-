@@ -131,7 +131,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
         <label>
           {copy("Speech language", "Язык речи", "Мова маўлення")}
           <select value={ttsLanguage} onChange={(event) => setTtsLanguage(event.target.value as SupertonicLanguage)}>
-            {SUPERTONIC_LANGUAGES.filter(([code]) => code !== "na").map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+            {SUPERTONIC_LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
           </select>
         </label>
         <label>
