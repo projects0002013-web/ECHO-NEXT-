@@ -131,7 +131,7 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
   };
 
   return (
-    <section className="panel" aria-label={copy("Local AI speech synthesis", "Локальный ИИ-синтез речи", "Лакальны сінтэз маўлення з дапамогай ШІ")}>
+    <section className="panel" id="kokoro-voice-engine" aria-label={copy("Local AI speech synthesis", "Локальный ИИ-синтез речи", "Лакальны сінтэз маўлення з дапамогай ШІ")}>
       <div className="section-head">
         <h2>{copy("Neural voice synthesis", "Нейросетевой синтез речи", "Нейрасеткавы сінтэз маўлення")}</h2>
         <span className="badge">{status === "ready" ? copy("Ready", "Готов", "Гатова") : "Beta"}</span>
