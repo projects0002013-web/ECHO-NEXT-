@@ -148,7 +148,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
   };
 
   return (
-    <section className="panel" aria-label={copy("Supertonic 3 multilingual neural speech", "Мультиязычный нейросетевой синтез Supertonic 3", "Шматмоўны нейрасеткавы сінтэз Supertonic 3")}>
+    <section className="panel" id="supertonic-voice-engine" aria-label={copy("Supertonic 3 multilingual neural speech", "Мультиязычный нейросетевой синтез Supertonic 3", "Шматмоўны нейрасеткавы сінтэз Supertonic 3")}>
       <div className="section-head">
         <h2>{copy("Supertonic 3 · Multilingual AI", "Supertonic 3 · Мультиязычный ИИ", "Supertonic 3 · Шматмоўны ШІ")}</h2>
         <span className="badge">{status === "ready" ? "Ready" : cached ? "Cached" : hasPartialCache ? "Partial cache" : cacheStatus.available ? "Optional" : "Storage unavailable"}</span>
