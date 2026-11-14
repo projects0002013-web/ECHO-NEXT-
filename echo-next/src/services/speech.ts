@@ -7,8 +7,10 @@ export type Voice = {
   local: boolean;
 };
 export function speechLocale(language: string): string {
-  if (language === "ru") return "ru-RU";
-  if (language === "be") return "be-BY";
+  const normalized = language.trim().replace("_", "-");
+  if (normalized.toLowerCase() === "ru") return "ru-RU";
+  if (normalized.toLowerCase() === "be") return "be-BY";
+  if (/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i.test(normalized)) return normalized;
   return "en-US";
 }
 export interface SpeechEngine {
