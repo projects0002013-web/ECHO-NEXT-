@@ -5,14 +5,28 @@ import * as ort from 'onnxruntime-web';
 const SUPER_CACHE = "echo-supertonic-3-v1";
 async function fetchCached(input, init) {
   const url = String(input);
-  if (typeof caches === "undefined") return fetch(input, init);
+  if (typeof caches === "undefined") {
+    throw new Error("Local model storage is unavailable in this browser. Supertonic cannot be installed for offline use here.");
+  }
   const cache = await caches.open(SUPER_CACHE);
   const cached = await cache.match(url);
-  if (cached) return cached;
+  if (cached?.ok) return cached;
+  if (cached) await cache.delete(url);
+
   const response = await fetch(input, { ...init, mode: "cors", credentials: "omit" });
   if (!response.ok) throw new Error(`Model asset request failed (${response.status}): ${url}`);
-  try { await cache.put(url, response.clone()); } catch (error) {
-    console.warn("Supertonic asset could not be persisted in Cache Storage:", error);
+
+  // Do not report a successful install unless the downloaded file was really
+  // committed to persistent browser storage. A swallowed quota error here
+  // previously made the engine work only until the app was restarted.
+  try {
+    await cache.put(url, response.clone());
+    const saved = await cache.match(url);
+    if (!saved?.ok) throw new Error("Cache Storage did not return the saved model file.");
+  } catch (error) {
+    const filename = url.split("/").pop() || "model asset";
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Could not save ${filename} for offline use. Free up device storage and retry. (${detail})`);
   }
   return response;
 }
