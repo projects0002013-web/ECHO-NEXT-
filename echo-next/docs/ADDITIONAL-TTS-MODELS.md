@@ -4,7 +4,8 @@
 
 ### Kokoro 82M (existing)
 - ONNX model through `kokoro-js`, quantized q8/WASM.
-- Four preset voice choices currently exposed by ECHO.
+- 28 preset voice styles exposed by ECHO: 20 American English and 8 British English voices.
+- The selected preset is stored locally and restored when Voice Studio is reopened or the app restarts.
 - In this integration, English only.
 - Lazy model loading; existing offline behavior was verified by the project owner on their Android device.
 
@@ -52,3 +53,10 @@ ECHO now offers a conservative “Adaptive pacing” option for system TTS and S
 - Supertonic source helper: MIT, copyright Supertone Inc.; see `THIRD-PARTY-NOTICES.md`.
 - Supertonic 3 weights: OpenRAIL-M; read the full model license before redistribution or product release.
 - Kokoro and other dependencies retain their own upstream licenses. Review each model's model card separately before commercial distribution.
+
+
+## Voice Studio presentation and preferences
+- Kokoro now exposes the full 28-preset voice list published by the pinned ONNX community model card.
+- Kokoro voice selection and Supertonic voice/language/speed/quality/adaptive settings are saved locally, with safe defaults if local storage is unavailable or corrupted.
+- Voice Studio cards and controls use a refined responsive layout, including dark-theme styling and clearer status notes.
+- The additional Piper browser engine was evaluated as a possible third engine. It relies on an eSpeak NG WebAssembly phonemizer (GPL-3.0-or-later component) and separate voice/model terms; do not bundle it into this app until the project explicitly accepts and documents those distribution obligations. A Kazakh Piper voice exists, but that alone is not sufficient to treat it as a ready-to-ship mobile engine.
