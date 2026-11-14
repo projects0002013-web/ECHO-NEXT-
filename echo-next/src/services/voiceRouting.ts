@@ -1,9 +1,8 @@
 /**
  * Central policy for choosing ECHO's speech route.
  *
- * This module does not perform network requests or synthesize audio. It makes
- * the routing decision so the UI can call the selected engine and report
- * unavailable models honestly.
+ * This module is deliberately pure: it never downloads a model or contacts a
+ * provider. The caller supplies verified availability and owns fallbacks.
  */
 export type SpeechEngine = "online" | "supertonic" | "kokoro" | "system";
 
@@ -11,7 +10,6 @@ export type VoiceRouteInput = {
   isOnline: boolean;
   onlineProviderConfigured: boolean;
   language: string;
-  /** Whether the user has installed the model assets on this device. */
   supertonicInstalled: boolean;
   kokoroInstalled: boolean;
   systemVoiceAvailable: boolean;
@@ -29,6 +27,7 @@ export type VoiceRoute = {
     | "offline-model-not-installed"
     | "offline-language-fallback";
   requiresModelDownload: boolean;
+  recommendedDownload?: "supertonic" | "kokoro";
 };
 
 const SUPERTONIC_LANGUAGES = new Set([
@@ -41,9 +40,30 @@ function primaryLanguage(language: string): string {
   return language.trim().replaceAll("_", "-").split("-")[0].toLowerCase();
 }
 
+function offlineReason(input: VoiceRouteInput): VoiceRoute["reason"] {
+  return input.isOnline ? "online-provider-unavailable" : "offline-no-connection";
+}
+
+function systemFallback(
+  input: VoiceRouteInput,
+  recommendedDownload?: "supertonic" | "kokoro",
+): VoiceRoute {
+  return {
+    mode: "offline",
+    engine: "system",
+    reason: input.systemVoiceAvailable
+      ? recommendedDownload ? "offline-model-not-installed" : offlineReason(input)
+      : "offline-language-fallback",
+    requiresModelDownload: false,
+    ...(recommendedDownload ? { recommendedDownload } : {}),
+  };
+}
+
 /**
+ * Prefer a ready local neural model. If none is installed, keep communication
+ * working with system TTS and tell the UI which optional model can be added.
  * Online speech is selected only when both connectivity and a real provider
- * are available. Otherwise the result is always an offline-capable engine.
+ * are available.
  */
 export function resolveVoiceRoute(input: VoiceRouteInput): VoiceRoute {
   if (input.isOnline && input.onlineProviderConfigured) {
@@ -59,45 +79,38 @@ export function resolveVoiceRoute(input: VoiceRouteInput): VoiceRoute {
   const preferred = input.preferredOfflineEngine;
 
   if (preferred === "system" && input.systemVoiceAvailable) {
-    return {
-      mode: "offline", engine: "system",
-      reason: input.isOnline ? "online-provider-unavailable" : "offline-no-connection",
-      requiresModelDownload: false,
-    };
+    return systemFallback(input);
   }
 
-  if (
-    (preferred === "kokoro" || (!preferred && language === "en")) &&
-    language === "en"
-  ) {
-    return {
-      mode: "offline", engine: "kokoro",
-      reason: input.kokoroInstalled ? "offline-preferred-engine" : "offline-model-not-installed",
-      requiresModelDownload: !input.kokoroInstalled,
-    };
+  if (preferred === "kokoro" && language === "en") {
+    if (input.kokoroInstalled) {
+      return { mode: "offline", engine: "kokoro", reason: "offline-preferred-engine", requiresModelDownload: false };
+    }
+    if (input.supertonicInstalled && SUPERTONIC_LANGUAGES.has(language)) {
+      return { mode: "offline", engine: "supertonic", reason: "offline-preferred-engine", requiresModelDownload: false };
+    }
+    return systemFallback(input, "kokoro");
   }
 
-  if (SUPERTONIC_LANGUAGES.has(language)) {
-    return {
-      mode: "offline", engine: "supertonic",
-      reason: input.supertonicInstalled ? "offline-preferred-engine" : "offline-model-not-installed",
-      requiresModelDownload: !input.supertonicInstalled,
-    };
+  if (preferred === "supertonic" && SUPERTONIC_LANGUAGES.has(language)) {
+    if (input.supertonicInstalled) {
+      return { mode: "offline", engine: "supertonic", reason: "offline-preferred-engine", requiresModelDownload: false };
+    }
+    if (language === "en" && input.kokoroInstalled) {
+      return { mode: "offline", engine: "kokoro", reason: "offline-preferred-engine", requiresModelDownload: false };
+    }
+    return systemFallback(input, "supertonic");
   }
 
-  if (input.systemVoiceAvailable) {
-    return {
-      mode: "offline", engine: "system",
-      reason: "offline-language-fallback",
-      requiresModelDownload: false,
-    };
+  if (language === "en" && input.kokoroInstalled) {
+    return { mode: "offline", engine: "kokoro", reason: "offline-preferred-engine", requiresModelDownload: false };
   }
 
-  // Return the system engine as a clear unavailable fallback. The caller must
-  // check the installed voice list and show an actionable message if absent.
-  return {
-    mode: "offline", engine: "system",
-    reason: "offline-language-fallback",
-    requiresModelDownload: false,
-  };
+  if (SUPERTONIC_LANGUAGES.has(language) && input.supertonicInstalled) {
+    return { mode: "offline", engine: "supertonic", reason: "offline-preferred-engine", requiresModelDownload: false };
+  }
+
+  if (language === "en") return systemFallback(input, "kokoro");
+  if (SUPERTONIC_LANGUAGES.has(language)) return systemFallback(input, "supertonic");
+  return systemFallback(input);
 }
