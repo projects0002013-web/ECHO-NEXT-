@@ -3,6 +3,7 @@ import { z } from "zod";
 export const settingsSchema = z.object({
   theme: z.enum(["light", "dark", "system"]),
   language: z.enum(["en", "ru", "be"]),
+  adaptiveVoice: z.enum(["off", "smart"]).default("off"),
   rate: z.number().min(0.5).max(2),
   pitch: z.number().min(0.5).max(2),
   voice: z.string().max(500),
@@ -148,6 +149,7 @@ export function initialState(): State {
     settings: {
       theme: "light",
       language: "en",
+      adaptiveVoice: "off",
       rate: 1,
       pitch: 1,
       voice: "",
