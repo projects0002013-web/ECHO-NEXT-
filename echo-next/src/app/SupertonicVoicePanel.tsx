@@ -9,6 +9,8 @@ import {
   synthesizeSupertonic,
   type SupertonicLanguage,
   type SupertonicVoice,
+  loadSupertonicPreferences,
+  saveSupertonicPreferences,
 } from "../services/supertonic";
 
 type UILanguage = "en" | "ru" | "be";
@@ -17,11 +19,10 @@ type Status = "idle" | "loading" | "ready" | "generating" | "error";
 export default function SupertonicVoicePanel({ language }: { language: UILanguage }) {
   const [status, setStatus] = useState<Status>("idle");
   const [text, setText] = useState("Hello. This is ECHO speaking with Supertonic.");
-  const [voice, setVoice] = useState<SupertonicVoice>("F1");
-  const [ttsLanguage, setTtsLanguage] = useState<SupertonicLanguage>(language === "ru" ? "ru" : "en");
-  const [speed, setSpeed] = useState(1);
-  const [steps, setSteps] = useState(8);
-  const [adaptive, setAdaptive] = useState(true);
+  const [preferences, setPreferences] = useState(() =>
+    loadSupertonicPreferences(language === "ru" ? "ru" : "en"),
+  );
+  const { voice, language: ttsLanguage, speed, steps, adaptive } = preferences;
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
@@ -33,11 +34,24 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
     language === "ru" ? ru : language === "be" ? be : en;
 
   useEffect(() => {
-    void isSupertonicModelCached().then(setCached).catch(() => setCached(false));
+    void isSupertonicModelCached()
+      .then((stored) => {
+        setCached(stored);
+        if (stored) setMessage(copy(
+          "Supertonic model files are saved on this device. Tap Load cached model to prepare the engine; no download is needed.",
+          "Файлы Supertonic сохранены на устройстве. Нажмите «Загрузить сохранённую модель», чтобы подготовить движок. Повторное скачивание не требуется.",
+          "Файлы Supertonic захаваныя на прыладзе. Націсні «Загрузіць захаваную мадэль», каб падрыхтаваць рухавік. Паўторная загрузка не патрэбная."
+        ));
+      })
+      .catch(() => setCached(false));
     return () => {
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    saveSupertonicPreferences(preferences);
+  }, [preferences]);
 
   const load = async () => {
     if (status === "loading" || status === "generating") return;
@@ -48,13 +62,17 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
       "Правяраем сховішча і рыхтуем дадатковую мадэль памерам каля 400 МБ…"
     ));
     try {
-      const estimate = await modelStorageEstimate();
-      if (estimate.available !== undefined && estimate.available < 420 * 1024 * 1024) {
-        throw new Error(copy(
-          "Not enough free app storage. Supertonic needs about 400 MB plus temporary working space.",
-          "Недостаточно свободной памяти приложения. Supertonic требуется около 400 МБ и дополнительное место для работы.",
-          "Недастаткова вольнага месца. Supertonic патрэбна каля 400 МБ і дадатковае месца для працы."
-        ));
+      const alreadyCached = await isSupertonicModelCached().catch(() => false);
+      setCached(alreadyCached);
+      if (!alreadyCached) {
+        const estimate = await modelStorageEstimate();
+        if (estimate.available !== undefined && estimate.available < 420 * 1024 * 1024) {
+          throw new Error(copy(
+            "Not enough free app storage. Supertonic needs about 400 MB plus temporary working space.",
+            "Недостаточно свободной памяти приложения. Supertonic требуется около 400 МБ и дополнительное место для работы.",
+            "Недастаткова вольнага месца. Supertonic патрэбна каля 400 МБ і дадатковае месца для працы."
+          ));
+        }
       }
       await loadSupertonic((name, current, total) => {
         setProgress(`${current}/${total} · ${name}`);
@@ -130,31 +148,31 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
       <div className="settings-grid">
         <label>
           {copy("Speech language", "Язык речи", "Мова маўлення")}
-          <select value={ttsLanguage} onChange={(event) => setTtsLanguage(event.target.value as SupertonicLanguage)}>
+          <select aria-label={copy("Speech language", "Язык речи", "Мова маўлення")} value={ttsLanguage} onChange={(event) => setPreferences((current) => ({ ...current, language: event.target.value as SupertonicLanguage }))}>
             {SUPERTONIC_LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
           </select>
         </label>
         <label>
           {copy("Neural voice style", "Стиль нейросетевого голоса", "Стыль нейрасеткавага голасу")}
-          <select value={voice} onChange={(event) => setVoice(event.target.value as SupertonicVoice)}>
+          <select aria-label={copy("Neural voice style", "Стиль нейросетевого голоса", "Стыль нейрасеткавага голасу")} value={voice} onChange={(event) => setPreferences((current) => ({ ...current, voice: event.target.value as SupertonicVoice }))}>
             {SUPERTONIC_VOICES.map((v) => <option key={v} value={v}>{v.startsWith("F") ? "Female" : "Male"} · {v}</option>)}
           </select>
         </label>
       </div>
       <label>
         {copy("Speech speed", "Скорость речи", "Хуткасць маўлення")} · {speed.toFixed(2)}×
-        <input type="range" min="0.7" max="1.8" step="0.05" value={speed} onChange={(event) => setSpeed(Number(event.target.value))} />
+        <input aria-label={copy("Speech speed", "Скорость речи", "Хуткасць маўлення")} type="range" min="0.7" max="1.8" step="0.05" value={speed} onChange={(event) => setPreferences((current) => ({ ...current, speed: Number(event.target.value) }))} />
       </label>
       <label>
         {copy("Quality steps", "Шаги качества", "Крокі якасці")}
-        <select value={steps} onChange={(event) => setSteps(Number(event.target.value))}>
+        <select aria-label={copy("Quality steps", "Шаги качества", "Крокі якасці")} value={steps} onChange={(event) => setPreferences((current) => ({ ...current, steps: Number(event.target.value) as 5 | 8 | 12 }))}>
           <option value={5}>5 · Faster</option>
           <option value={8}>8 · Balanced</option>
           <option value={12}>12 · Higher quality</option>
         </select>
       </label>
       <label className="checkbox">
-        <input type="checkbox" checked={adaptive} onChange={(event) => setAdaptive(event.target.checked)} />
+        <input type="checkbox" checked={adaptive} onChange={(event) => setPreferences((current) => ({ ...current, adaptive: event.target.checked }))} />
         {copy("Adaptive pacing", "Адаптивный темп", "Адаптыўны тэмп")}
       </label>
       <p className="field-note">{copy(
@@ -164,7 +182,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
       )}</p>
       <div className="section-head">
         <button className="outline" type="button" disabled={status === "loading" || status === "generating"} onClick={() => void load()}>
-          {status === "loading" ? copy("Loading…", "Загрузка…", "Загрузка…") : copy("Download & load (~400 MB)", "Загрузить и открыть (~400 МБ)", "Загрузіць і адкрыць (~400 МБ)")}
+          {status === "loading" ? copy("Loading…", "Загрузка…", "Загрузка…") : cached ? copy("Load cached model", "Загрузить сохранённую модель", "Загрузіць захаваную мадэль") : copy("Download & load (~400 MB)", "Загрузить и открыть (~400 МБ)", "Загрузіць і адкрыць (~400 МБ)")}
         </button>
         <button className="primary" type="button" disabled={status !== "ready" || !text.trim()} onClick={() => void generate()}>
           {status === "generating" ? copy("Generating…", "Генерация…", "Стварэнне…") : copy("Generate speech", "Создать речь", "Стварыць маўленне")}
