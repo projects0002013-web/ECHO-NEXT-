@@ -558,12 +558,22 @@ export default function App() {
           id="composer"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && text.trim() && !speaking) {
+              event.preventDefault();
+              void say();
+            }
+          }}
+          aria-describedby="composer-shortcut"
           maxLength={2000}
           placeholder={t(
             "What would you like to say?",
             "Что вы хотите сказать?",
           )}
         />
+        <p className="composer-shortcut" id="composer-shortcut">
+          {t("Tip: press Ctrl/⌘ + Enter to speak", "Подсказка: Ctrl/⌘ + Enter — произнести")}
+        </p>
         <div className="composer-bottom">
           <button className="voice-chip" onClick={() => go("voice")}>
             <AudioLines size={17} />
@@ -1031,8 +1041,12 @@ export default function App() {
                   {state.categories.map((c) => (
                     <div className="category-row" key={c.id}>
                       <button
-                        className="text-button"
-                        onClick={() => setCategory(c.id)}
+                        className={category === c.id && !favorites ? "text-button category-filter-button active" : "text-button category-filter-button"}
+                        aria-pressed={category === c.id && !favorites}
+                        onClick={() => {
+                          setCategory(c.id);
+                          setFavorites(false);
+                        }}
                       >
                         <Folder size={16} />
                         {c.name}
@@ -1700,29 +1714,30 @@ export default function App() {
                     defaultValue={editor.value?.text}
                   />
                 </label>
-                <label>
-                  {t("Category", "Категория")}
-                  <select
-                    name="categoryId"
-                    required
-                    defaultValue={
-                      editor.value?.categoryId ||
-                      category ||
-                      state.categories[0]?.id
-                    }
-                  >
-                    {state.categories.map((c) => (
-                      <option value={c.id} key={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {!state.categories.length && (
-                  <p>
+                {state.categories.length ? (
+                  <label>
+                    {t("Category", "Категория")}
+                    <select
+                      name="categoryId"
+                      required
+                      defaultValue={
+                        editor.value?.categoryId ||
+                        category ||
+                        state.categories[0]?.id
+                      }
+                    >
+                      {state.categories.map((c) => (
+                        <option value={c.id} key={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="field-note">
                     {t(
-                      "Create a category in the Library first.",
-                      "Сначала создайте категорию в библиотеке.",
+                      "A General category will be created automatically for your first phrase.",
+                      "Для первой фразы категория «Общее» создастся автоматически.",
                     )}
                   </p>
                 )}
@@ -1764,7 +1779,7 @@ export default function App() {
               </button>
               <button
                 className="primary"
-                disabled={editor.kind === "phrase" && !state.categories.length}
+                disabled={false}
               >
                 <Check size={17} />
                 {t("Save", "Сохранить")}
@@ -1873,16 +1888,26 @@ export default function App() {
     const f = new FormData(e.currentTarget);
     try {
       if (editor?.kind === "phrase") {
-        update((v) =>
-          upsertPhrase(v, {
-            id: editor.value?.id || crypto.randomUUID(),
-            text: String(f.get("text")).trim(),
-            categoryId: String(f.get("categoryId")),
-            language: f.get("language") as "en" | "ru" | "be",
-            favorite: f.get("favorite") === "on",
-            order: editor.value?.order ?? v.phrases.length,
-          }),
-        );
+        const requestedCategoryId = String(f.get("categoryId") || editor.value?.categoryId || "");
+        update((v) => {
+          const categoryId = v.categories.some((item) => item.id === requestedCategoryId)
+            ? requestedCategoryId
+            : v.categories[0]?.id || crypto.randomUUID();
+          const categories = v.categories.length
+            ? v.categories
+            : [{ id: categoryId, name: t("General", "Общее") }];
+          return upsertPhrase(
+            { ...v, categories },
+            {
+              id: editor.value?.id || crypto.randomUUID(),
+              text: String(f.get("text")).trim(),
+              categoryId,
+              language: f.get("language") as "en" | "ru" | "be",
+              favorite: f.get("favorite") === "on",
+              order: editor.value?.order ?? v.phrases.length,
+            },
+          );
+        });
       } else if (editor?.kind === "category") {
         const name = String(f.get("name")).trim();
         if (!name) return;
