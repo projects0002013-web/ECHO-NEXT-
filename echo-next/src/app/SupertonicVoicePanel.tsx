@@ -79,7 +79,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
           "Браўзер не мае доступу да лакальнага сховішча мадэляў, таму Supertonic не зможа працаваць без інтэрнэту пасля перазапуску."
         ));
       }
-      if (!before.complete && !hasPartialCache) {
+      if (!before.complete && before.modelFilesCached === 0 && before.voiceStylesCached === 0) {
         const estimate = await modelStorageEstimate();
         if (estimate.available !== undefined && estimate.available < 420 * 1024 * 1024) {
           throw new Error(copy(
