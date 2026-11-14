@@ -140,7 +140,9 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
   }
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Neural voice synthesis" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Generate speech" })).toBeDisabled();
+  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).getByRole("button", { name: "Generate speech" })).toBeDisabled();
+  await expect(page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" }).getByRole("button", { name: /Download & load/ })).toBeEnabled();
   await expect(page.getByText(/This does not clone a person/)).toBeVisible();
   await page.screenshot({
     path: "test-results/mobile-voice.png",
