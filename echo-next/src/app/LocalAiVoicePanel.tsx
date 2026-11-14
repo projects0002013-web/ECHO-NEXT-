@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { AI_VOICES, loadLocalAI, synthesizeLocalAI, type AIVoice } from "../services/localAi";
 
-export default function LocalAiVoicePanel({ language }: { language: "en" | "ru" }) {
+type UILanguage = "en" | "ru" | "be";
+export default function LocalAiVoicePanel({ language }: { language: UILanguage }) {
   const ru = language === "ru";
+  const be = language === "be";
   const [text, setText] = useState("Hello. This is a new AI-generated voice.");
   const [voice, setVoice] = useState<AIVoice>("af_heart");
   const [status, setStatus] = useState<"unloaded" | "loading" | "ready" | "generating" | "error">("unloaded");
@@ -11,6 +13,9 @@ export default function LocalAiVoicePanel({ language }: { language: "en" | "ru" 
   const audioRef = useRef<HTMLAudioElement>(null);
   const urlRef = useRef("");
   const mountedRef = useRef(true);
+
+  const copy = (en: string, ruText: string, beText: string) =>
+    ru ? ruText : be ? beText : en;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -23,27 +28,31 @@ export default function LocalAiVoicePanel({ language }: { language: "en" | "ru" 
   const load = async () => {
     if (status === "loading" || status === "generating") return;
     setStatus("loading");
-    setMessage(ru
-      ? "Загрузка модели на устройство. При первом запуске потребуется интернет и свободная память."
-      : "Loading the model onto this device. The first download needs internet and free memory.");
+    setMessage(copy(
+      "Loading the model onto this device. The first download needs internet and free memory.",
+      "Загрузка модели на устройство. При первом запуске потребуется интернет и свободная память.",
+      "Мадэль загружаецца на прыладу. Пры першым запуску патрэбны інтэрнэт і вольная памяць."
+    ));
     try {
       await loadLocalAI();
       if (!mountedRef.current) return;
       setStatus("ready");
-      setMessage(ru ? "Модель загружена. Теперь можно генерировать речь." : "AI model ready. Generate speech below.");
+      setMessage(copy("AI model ready. Generate speech below.", "Модель загружена. Теперь можно генерировать речь.", "Мадэль загружана. Цяпер можна ствараць маўленне."));
     } catch {
       if (!mountedRef.current) return;
       setStatus("error");
-      setMessage(ru
-        ? "Модель не загрузилась. Проверьте интернет, память и поддержку браузера. Можно повторить."
-        : "Could not load AI model. Check the connection, memory, and browser support, then retry.");
+      setMessage(copy(
+        "Could not load AI model. Check the connection, memory, and browser support, then retry.",
+        "Модель не загрузилась. Проверьте интернет, память и поддержку браузера. Можно повторить.",
+        "Не ўдалося загрузіць мадэль. Праверце інтэрнэт, памяць і падтрымку браўзера, затым паспрабуйце зноў."
+      ));
     }
   };
 
   const generate = async () => {
     if (status !== "ready") return;
     setStatus("generating");
-    setMessage(ru ? "Нейросеть создаёт звук на этом устройстве…" : "Generating speech on this device…");
+    setMessage(copy("Generating speech on this device…", "Нейросеть создаёт звук на этом устройстве…", "Нейрасетка стварае гук на гэтай прыладзе…"));
     try {
       const blob = await synthesizeLocalAI(text, voice);
       if (!mountedRef.current) return;
@@ -53,7 +62,7 @@ export default function LocalAiVoicePanel({ language }: { language: "en" | "ru" 
       urlRef.current = url;
       setAudioUrl(url);
       setStatus("ready");
-      setMessage(ru ? "Готово. Нажмите Play ниже." : "Generated. Press Play below.");
+      setMessage(copy("Generated. Press Play below.", "Готово. Нажмите Play ниже.", "Гатова. Націсніце Play ніжэй."));
     } catch (error) {
       if (!mountedRef.current) return;
       setStatus("ready");
@@ -62,59 +71,46 @@ export default function LocalAiVoicePanel({ language }: { language: "en" | "ru" 
   };
 
   return (
-    <section className="panel" aria-label={ru ? "Локальный ИИ-синтез речи" : "Local AI speech synthesis"}>
+    <section className="panel" aria-label={copy("Local AI speech synthesis", "Локальный ИИ-синтез речи", "Лакальны сінтэз маўлення з дапамогай ШІ")}>
       <div className="section-head">
-        <h2>{ru ? "Нейросетевой синтез речи" : "Neural voice synthesis"}</h2>
-        <span className="badge">{status === "ready" ? (ru ? "Готов" : "Ready") : "Beta"}</span>
+        <h2>{copy("Neural voice synthesis", "Нейросетевой синтез речи", "Нейрасеткавы сінтэз маўлення")}</h2>
+        <span className="badge">{status === "ready" ? copy("Ready", "Готов", "Гатова") : "Beta"}</span>
       </div>
-      <p>{ru
-        ? "Настоящая нейросеть Kokoro создаёт новые фразы на устройстве. Пока поддерживается английский. Это не копия личного голоса."
-        : "Kokoro generates new speech locally. English only for now. This does not clone a person's voice."}
-      </p>
-      <p className="field-note">{ru
-        ? "Модель загружается отдельно при первом запуске (большой файл). При дальнейшем использовании её хранение зависит от кэша браузера. Фразы и записи не загружаются на сервер синтеза."
-        : "Model download is large and needs internet once. Later offline availability depends on browser cache. Your phrases and recordings are not sent to an inference server."}
-      </p>
+      <p>{copy(
+        "Kokoro generates new speech locally. English only for now. This does not clone a person's voice.",
+        "Настоящая нейросеть Kokoro создаёт новые фразы на устройстве. Пока поддерживается английский. Это не копия личного голоса.",
+        "Нейрасетка Kokoro стварае новае маўленне на прыладзе. Пакуль падтрымліваецца толькі англійская мова. Гэта не кланаванне асабістага голасу."
+      )}</p>
+      <p className="field-note">{copy(
+        "Model download is large and needs internet once. Later offline availability depends on browser cache. Your phrases and recordings are not sent to an inference server.",
+        "Модель загружается отдельно при первом запуске (большой файл). При дальнейшем использовании её хранение зависит от кэша браузера. Фразы и записи не загружаются на сервер синтеза.",
+        "Пры першым запуску трэба загрузіць мадэль (вялікі файл). Далейшая праца без інтэрнэту залежыць ад кэша браўзера. Фразы і запісы не адпраўляюцца на сервер сінтэзу."
+      )}</p>
       <label>
-        {ru ? "Английский текст для ИИ" : "English text for AI"}
-        <textarea
-          rows={3}
-          maxLength={400}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="Type an English phrase"
-        />
+        {copy("English text for AI", "Английский текст для ИИ", "Англійскі тэкст для ШІ")}
+        <textarea rows={3} maxLength={400} value={text} onChange={(event) => setText(event.target.value)} placeholder="Type an English phrase" />
       </label>
       <label>
-        {ru ? "Нейросетевой голос" : "AI voice"}
+        {copy("AI voice", "Нейросетевой голос", "Голас нейрасеткі")}
         <select value={voice} onChange={(event) => setVoice(event.target.value as AIVoice)}>
           {AI_VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
         </select>
       </label>
       <div className="section-head">
-        <button
-          className="outline"
-          type="button"
-          disabled={status === "loading" || status === "generating"}
-          onClick={() => void load()}
-        >
-          {status === "loading" ? (ru ? "Загружается…" : "Loading…") : (ru ? "Загрузить ИИ" : "Load AI model")}
+        <button className="outline" type="button" disabled={status === "loading" || status === "generating"} onClick={() => void load()}>
+          {status === "loading" ? copy("Loading…", "Загружается…", "Загрузка…") : copy("Load AI model", "Загрузить ИИ", "Загрузіць мадэль ШІ")}
         </button>
-        <button
-          className="primary"
-          type="button"
-          disabled={status !== "ready" || !text.trim()}
-          onClick={() => void generate()}
-        >
-          {status === "generating" ? (ru ? "Генерация…" : "Generating…") : (ru ? "Создать речь" : "Generate speech")}
+        <button className="primary" type="button" disabled={status !== "ready" || !text.trim()} onClick={() => void generate()}>
+          {status === "generating" ? copy("Generating…", "Генерация…", "Стварэнне…") : copy("Generate speech", "Создать речь", "Стварыць маўленне")}
         </button>
       </div>
       <p className="field-note" role="status" aria-live="polite">{message}</p>
-      {audioUrl && <audio ref={audioRef} src={audioUrl} controls aria-label={ru ? "Созданная ИИ речь" : "Generated AI speech"} />}
-      <small>{ru
-        ? "Для русского и казахского пользуйтесь системным голосом. Персональное клонирование голоса пока не подключено."
-        : "For Russian or Kazakh, use system speech. Personalized voice cloning is not configured."}
-      </small>
+      {audioUrl && <audio ref={audioRef} src={audioUrl} controls aria-label={copy("Generated AI speech", "Созданная ИИ речь", "Створанае маўленне ШІ")} />}
+      <small>{copy(
+        "For Russian, Kazakh or Belarusian, use system speech. Personalized voice cloning is not configured.",
+        "Для русского, казахского и белорусского пользуйтесь системным голосом. Персональное клонирование голоса пока не подключено.",
+        "Для беларускай, рускай і казахскай моў выкарыстоўвайце сістэмны голас. Кланаванне асабістага голасу пакуль не падключана."
+      )}</small>
     </section>
   );
 }
