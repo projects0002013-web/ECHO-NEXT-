@@ -6,6 +6,11 @@ export type Voice = {
   language: string;
   local: boolean;
 };
+export function speechLocale(language: string): string {
+  if (language === "ru") return "ru-RU";
+  if (language === "be") return "be-BY";
+  return "en-US";
+}
 export interface SpeechEngine {
   voices(): Promise<Voice[]>;
   speak(text: string, settings: Settings, language?: string): Promise<void>;
@@ -31,7 +36,7 @@ export class BrowserSpeech implements SpeechEngine {
     speechSynthesis.cancel();
     return new Promise<void>((resolve, reject) => {
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = language === "ru" ? "ru-RU" : language === "be" ? "be-BY" : "en-US";
+      u.lang = speechLocale(language);
       u.rate = s.rate;
       u.pitch = s.pitch;
       const voice = speechSynthesis
@@ -69,7 +74,7 @@ class AndroidSpeech implements SpeechEngine {
   speak(text: string, s: Settings, language = s.language) {
     return native.speak({
       text,
-      language: language === "ru" ? "ru-RU" : language === "be" ? "be-BY" : "en-US",
+      language: speechLocale(language),
       voice: s.voice,
       rate: s.rate,
       pitch: s.pitch,
