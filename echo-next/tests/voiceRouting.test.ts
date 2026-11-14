@@ -19,6 +19,25 @@ describe("resolveVoiceRoute", () => {
     })).toMatchObject({ mode: "online", engine: "online", reason: "online-ready" });
   });
 
+  it("keeps online speech disabled in offline-neural mode even when a provider exists", () => {
+    expect(resolveVoiceRoute({
+      ...base,
+      isOnline: true,
+      onlineProviderConfigured: true,
+      modePreference: "neural",
+    })).toMatchObject({ mode: "offline", engine: "kokoro" });
+  });
+
+  it("keeps online speech disabled in system-only mode", () => {
+    expect(resolveVoiceRoute({
+      ...base,
+      isOnline: true,
+      onlineProviderConfigured: true,
+      modePreference: "system",
+      preferredOfflineEngine: "system",
+    })).toMatchObject({ mode: "offline", engine: "system" });
+  });
+
   it("never selects an unconfigured online provider", () => {
     expect(resolveVoiceRoute({
       ...base,
