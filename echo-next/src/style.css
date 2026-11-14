@@ -2583,3 +2583,27 @@ button:disabled {
     padding: 14px;
   }
 }
+
+
+.voice-profile-row .voice-profile-select {
+  flex: 1;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px !important;
+  border-radius: 10px;
+}
+.voice-profile-row .voice-profile-select.active {
+  color: var(--accent);
+  background: var(--tint);
+  font-weight: 700;
+}
+.voice-profile-select small {
+  display: block;
+  width: 100%;
+  font-size: 0.67rem;
+  font-weight: 500;
+}
+.voice-profile-row > .icon {
+  flex: 0 0 44px;
+}
