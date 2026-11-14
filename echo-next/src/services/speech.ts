@@ -10,7 +10,8 @@ export function speechLocale(language: string): string {
   const normalized = language.trim().replace("_", "-");
   if (normalized.toLowerCase() === "ru") return "ru-RU";
   if (normalized.toLowerCase() === "be") return "be-BY";
-  if (/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i.test(normalized)) return normalized;
+  if (normalized.toLowerCase() === "en") return "en-US";
+  if (/^[a-z]{2,3}-[a-z0-9]{2,8}(?:-[a-z0-9]{2,8})*$/i.test(normalized)) return normalized;
   return "en-US";
 }
 export interface SpeechEngine {
