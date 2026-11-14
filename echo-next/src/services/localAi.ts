@@ -31,7 +31,7 @@ export function validateAIText(value: string): string {
   if (!text || text.length > 400)
     throw new Error("Enter 1–400 English characters.");
   if (/[\u0400-\u04FF\u0370-\u03FF]/u.test(text))
-    throw new Error("This AI model supports English, not Russian or Kazakh. Use system TTS for those languages.");
+    throw new Error("This AI model supports English only. Use system TTS for Russian, Kazakh, or Belarusian.");
   return text;
 }
 
