@@ -403,6 +403,12 @@ export default function App() {
     setCategory("");
     setFavorites(false);
   }
+  function jumpToVoiceEngine(id: string) {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: s.reducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  }
   async function say(value = text, language?: string) {
     if (!value.trim()) return;
     const id = ++speakId.current;
@@ -1189,10 +1195,10 @@ export default function App() {
           {page === "voice" && (
             <>
               <nav className="voice-engine-nav" aria-label={t("Voice engine shortcuts", "Быстрый переход к голосовым движкам")}>
-                <a href="#system-voice-engine">{t("System TTS", "Системный голос")}</a>
-                <a href="#recorded-voice-panel">{t("My recordings", "Мои записи")}</a>
-                <a href="#kokoro-voice-engine">Kokoro</a>
-                <a href="#supertonic-voice-engine">Supertonic</a>
+                <button type="button" onClick={() => jumpToVoiceEngine("system-voice-engine")}>{t("System TTS", "Системный голос")}</button>
+                <button type="button" onClick={() => jumpToVoiceEngine("recorded-voice-panel")}>{t("My recordings", "Мои записи")}</button>
+                <button type="button" onClick={() => jumpToVoiceEngine("kokoro-voice-engine")}>Kokoro</button>
+                <button type="button" onClick={() => jumpToVoiceEngine("supertonic-voice-engine")}>Supertonic</button>
               </nav>
               <div className="voice-overview panel" id="system-voice-engine">
                 <span className="large-wave">
