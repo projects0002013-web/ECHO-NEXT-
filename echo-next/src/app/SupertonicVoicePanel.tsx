@@ -176,12 +176,16 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
             {SUPERTONIC_LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
           </select>
         </label>
-        <label>
-          {copy("Neural voice style", "Стиль нейросетевого голоса", "Стыль нейрасеткавага голасу")}
-          <select aria-label={copy("Neural voice style", "Стиль нейросетевого голоса", "Стыль нейрасеткавага голасу")} value={voice} onChange={(event) => setPreferences((current) => ({ ...current, voice: event.target.value as SupertonicVoice }))}>
-            {SUPERTONIC_VOICES.map((v) => <option key={v} value={v}>{v.startsWith("F") ? "Female" : "Male"} · {v}</option>)}
-          </select>
-        </label>
+        <div className="supertonic-voice-picker" role="group" aria-label={copy("Neural voice style", "Стиль нейросетевого голоса", "Стыль нейрасеткавага голасу")}>
+          <span className="supertonic-picker-label">{copy("Neural voice style", "Стиль нейросетевого голоса", "Стыль нейрасеткавага голасу")}</span>
+          <div className="supertonic-voice-grid">
+            {SUPERTONIC_VOICES.map((v) => <button type="button" key={v} className={voice === v ? "supertonic-voice-option selected" : "supertonic-voice-option"} aria-pressed={voice === v} onClick={() => setPreferences((current) => ({ ...current, voice: v }))}>
+              <span className="supertonic-voice-symbol">{v.startsWith("F") ? "F" : "M"}</span>
+              <span><strong>{v.startsWith("F") ? copy("Female", "Женский", "Жаночы") : copy("Male", "Мужской", "Мужчынскі")}</strong><small>{v}</small></span>
+              {voice === v && <span className="supertonic-voice-selected">✓</span>}
+            </button>)}
+          </div>
+        </div>
       </div>
       <label>
         {copy("Speech speed", "Скорость речи", "Хуткасць маўлення")} · {speed.toFixed(2)}×
