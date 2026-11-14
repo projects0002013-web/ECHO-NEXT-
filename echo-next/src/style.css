@@ -1910,3 +1910,71 @@ dialog textarea {
   .system-voice-list { max-height: 340px; }
   .system-voice-option { padding: 8px; }
 }
+
+
+.supertonic-voice-picker {
+  display: grid;
+  gap: 9px;
+}
+.supertonic-picker-label {
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.supertonic-voice-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+.supertonic-voice-option {
+  min-width: 0;
+  min-height: 68px;
+  position: relative;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 9px;
+  border-radius: 11px;
+  background: var(--bg);
+  text-align: left;
+}
+.supertonic-voice-option.selected {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--tint);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.supertonic-voice-symbol {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 9px;
+  color: var(--accent);
+  background: var(--tint);
+  font-weight: 750;
+}
+.supertonic-voice-option > span:nth-child(2) {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.supertonic-voice-option strong {
+  font-size: 0.68rem;
+}
+.supertonic-voice-option small {
+  font-size: 0.68rem;
+}
+.supertonic-voice-selected {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+@media (max-width: 700px) {
+  .supertonic-voice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .supertonic-voice-option { min-height: 60px; }
+}
