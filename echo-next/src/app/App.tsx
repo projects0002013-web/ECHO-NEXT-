@@ -1800,7 +1800,7 @@ export default function App() {
       setNotice(t("Could not export backup.", "Не удалось создать копию."));
     }
   }
-  function saveEditor(e: FormEvent<HTMLFormElement>) {
+  async function saveEditor(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     try {
@@ -1841,6 +1841,8 @@ export default function App() {
           ],
         }));
       }
+      // Wait for the queued IndexedDB transaction before closing the editor.
+      await queue.current;
       setEditor(null);
     } catch {
       setNotice(t("Please check your entry.", "Проверьте введённые данные."));
