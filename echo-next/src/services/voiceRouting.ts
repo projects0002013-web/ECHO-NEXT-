@@ -14,6 +14,7 @@ export type VoiceRouteInput = {
   kokoroInstalled: boolean;
   systemVoiceAvailable: boolean;
   preferredOfflineEngine?: "supertonic" | "kokoro" | "system";
+  modePreference?: "auto" | "system" | "neural";
 };
 
 export type VoiceRoute = {
@@ -66,7 +67,7 @@ function systemFallback(
  * are available.
  */
 export function resolveVoiceRoute(input: VoiceRouteInput): VoiceRoute {
-  if (input.isOnline && input.onlineProviderConfigured) {
+  if ((input.modePreference ?? "auto") === "auto" && input.isOnline && input.onlineProviderConfigured) {
     return {
       mode: "online",
       engine: "online",
