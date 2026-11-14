@@ -138,8 +138,38 @@ export default function App() {
     lastText = useRef(""),
     audio = useRef<HTMLAudioElement>(null);
   const [voiceFilter, setVoiceFilter] = useState("");
-  const s = state.settings,
-    t = (en: string, ru: string) => (s.language === "ru" ? ru : en);
+  const s = state.settings;
+  const be: Record<string, string> = {
+    "Home": "Галоўная", "Communicate": "Зносіны", "Voice Studio": "Студыя голасу",
+    "Library": "Бібліятэка", "Settings": "Налады", "Device default": "Сістэмны голас",
+    "YOUR WORDS, OUT LOUD": "ТВАЕ СЛОВЫ ЎГОЛАС", "Message to speak": "Тэкст для агучвання",
+    "Clear text": "Ачысціць тэкст", "Repeat last speech": "Паўтарыць апошнюю фразу",
+    "Stop": "Спыніць", "Speak": "Прамовіць", "Search phrases": "Пошук фраз",
+    "Find a phrase…": "Знайсці фразу…", "Clear search": "Ачысціць пошук",
+    "All phrases": "Усе фразы", "Favorites": "Выбранае", "New phrase": "Новая фраза",
+    "Skip to content": "Перайсці да змесціва", "Workspace navigation": "Навігацыя па працоўнай прасторы",
+    "Main navigation": "Галоўная навігацыя", "Private by design": "Прыватнасць па змаўчанні",
+    "Your words stay with you.": "Твае словы застаюцца з табой.",
+    "Stored on this device": "Захоўваецца на гэтай прыладзе", "My workspace": "Мая прастора",
+    "Local storage": "Лакальнае сховішча", "Voice language": "Мова голасу",
+    "All languages": "Усе мовы", "System voice": "Сістэмны голас", "Preview voice": "Праслухаць голас",
+    "Speaking speed": "Хуткасць маўлення", "Pitch": "Вышыня тону",
+    "Voice profiles": "Галасавыя профілі", "Save profile": "Захаваць профіль",
+    "Recorded voice": "Запісаны голас", "Start recording": "Пачаць запіс",
+    "Stop & save": "Спыніць і захаваць", "Appearance & language": "Выгляд і мова",
+    "Appearance": "Выгляд", "Interface language": "Мова інтэрфейсу",
+    "Voice settings": "Налады голасу", "Accessibility": "Даступнасць",
+    "Text size": "Памер тэксту", "Phrase card spacing": "Памер картак",
+    "Comfortable": "Зручны", "Compact": "Кампактны", "Reduce motion": "Паменшыць анімацыю",
+    "Backup & restore": "Рэзервовая копія і аднаўленне", "Export backup": "Экспартаваць копію",
+    "Restore backup": "Аднавіць копію", "Privacy & your data": "Прыватнасць і твае даныя",
+    "Delete all personal data": "Выдаліць усе асабістыя даныя",
+    "Phrase language": "Мова фразы", "Phrase": "Фраза", "Category": "Катэгорыя",
+    "Add to favorites": "Дадаць у выбранае", "Name": "Назва", "Cancel": "Скасаваць",
+    "Save": "Захаваць", "Confirm": "Пацвердзіць", "Please confirm": "Пацвердзі дзеянне",
+  };
+  const t = (en: string, ru: string) =>
+    s.language === "ru" ? ru : s.language === "be" ? (be[en] ?? en) : en;
   useEffect(() => {
     loadState()
       .then((v) => {
@@ -1283,11 +1313,12 @@ export default function App() {
                     <select
                       value={s.language}
                       onChange={(e) =>
-                        setting("language", e.target.value as "en" | "ru")
+                        setting("language", e.target.value as "en" | "ru" | "be")
                       }
                     >
                       <option value="en">English</option>
                       <option value="ru">Русский</option>
+                      <option value="be">Беларуская</option>
                     </select>
                   </label>
                   <button className="outline" onClick={() => go("voice")}>
@@ -1556,6 +1587,7 @@ export default function App() {
                   >
                     <option value="en">English</option>
                     <option value="ru">Русский</option>
+                    <option value="be">Беларуская</option>
                   </select>
                 </label>
                 <label className="checkbox">
@@ -1699,7 +1731,7 @@ export default function App() {
             id: editor.value?.id || crypto.randomUUID(),
             text: String(f.get("text")).trim(),
             categoryId: String(f.get("categoryId")),
-            language: f.get("language") as "en" | "ru",
+            language: f.get("language") as "en" | "ru" | "be",
             favorite: f.get("favorite") === "on",
             order: editor.value?.order ?? v.phrases.length,
           }),
