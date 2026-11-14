@@ -146,6 +146,8 @@ export default function App() {
   const [systemVoiceAvailability, setSystemVoiceAvailability] = useState<"all" | "offline" | "online">("all");
   const s = state.settings;
   const be: Record<string, string> = {
+    "General": "Агульнае", "Currently active": "Зараз выкарыстоўваецца",
+    "Tip: press Ctrl/⌘ + Enter to speak": "Падказка: Ctrl/⌘ + Enter — агучыць",
     "Home": "Галоўная", "Communicate": "Зносіны", "Voice Studio": "Студыя голасу",
     "Library": "Бібліятэка", "Settings": "Налады", "Device default": "Сістэмны голас",
     "YOUR WORDS, OUT LOUD": "ТВАЕ СЛОВЫ ЎГОЛАС", "Message to speak": "Тэкст для агучвання",
