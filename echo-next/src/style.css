@@ -2607,3 +2607,65 @@ button:disabled {
 .voice-profile-row > .icon {
   flex: 0 0 44px;
 }
+
+
+.voice-engine-nav {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 18px;
+  padding: 6px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 5px 18px #17213b0a;
+  backdrop-filter: blur(12px);
+  scrollbar-width: none;
+}
+.voice-engine-nav::-webkit-scrollbar { display: none; }
+.voice-engine-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 13px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.voice-engine-nav a:hover,
+.voice-engine-nav a:focus-visible {
+  color: var(--accent);
+  background: var(--tint);
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+}
+#system-voice-engine,
+#recorded-voice-panel,
+#kokoro-voice-engine,
+#supertonic-voice-engine {
+  scroll-margin-top: 86px;
+}
+@media (max-width: 700px) {
+  .voice-engine-nav {
+    position: sticky;
+    top: 4px;
+    width: 100%;
+    gap: 4px;
+    margin-bottom: 14px;
+    padding: 5px;
+  }
+  .voice-engine-nav a {
+    min-height: 42px;
+    padding: 8px 11px;
+    font-size: 0.71rem;
+  }
+}
