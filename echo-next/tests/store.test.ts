@@ -59,6 +59,22 @@ describe("local communication data", () => {
     expect(s.categories.some((c) => c.id === "c0")).toBe(false);
     expect(s.phrases.some((p) => p.categoryId === "c0")).toBe(false);
   });
+  it("accepts and persists Belarusian interface and phrase language", async () => {
+    const s = initialState();
+    s.settings.language = "be";
+    s.phrases.push({
+      id: "be-test",
+      text: "Добры дзень.",
+      categoryId: "c0",
+      favorite: false,
+      language: "be",
+      order: 50,
+    });
+    await saveState(s);
+    const restored = await loadState();
+    expect(restored.settings.language).toBe("be");
+    expect(restored.phrases.find((p) => p.id === "be-test")?.language).toBe("be");
+  });
   it("persists theme and accessibility preferences", async () => {
     const s = initialState();
     s.settings.theme = "dark";
