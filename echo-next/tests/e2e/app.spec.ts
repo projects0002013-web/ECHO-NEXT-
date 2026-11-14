@@ -13,6 +13,48 @@ function logOfflineErrors(page: Page) {
       console.info("ECHO_BROWSER_CONSOLE", message.text());
   });
 }
+test("Supertonic voice preferences survive a full app reload", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  const panel = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
+  await panel.getByLabel("Neural voice style").selectOption("M3");
+  await panel.getByLabel("Speech language").selectOption("ru");
+  await panel.getByLabel("Quality steps").selectOption("12");
+  await panel.getByLabel("Adaptive pacing").uncheck();
+  await panel.getByLabel("Speech speed").evaluate((element: HTMLInputElement) => {
+    element.value = "1.35";
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expect(panel.getByLabel("Speech speed")).toHaveValue("1.35");
+  await page.reload();
+  await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  const restored = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
+  await expect(restored.getByLabel("Neural voice style")).toHaveValue("M3");
+  await expect(restored.getByLabel("Speech language")).toHaveValue("ru");
+  await expect(restored.getByLabel("Quality steps")).toHaveValue("12");
+  await expect(restored.getByLabel("Adaptive pacing")).not.toBeChecked();
+  await expect(restored.getByLabel("Speech speed")).toHaveValue("1.35");
+});
+
+test("cached Supertonic files are offered for reload after app restart", async ({ page }) => {
+  await page.goto("./");
+  await page.evaluate(async () => {
+    const cache = await caches.open("echo-supertonic-3-v1");
+    const root = "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46";
+    const files = ["duration_predictor.onnx", "text_encoder.onnx", "vector_estimator.onnx", "vocoder.onnx", "tts.json", "unicode_indexer.json"];
+    for (const file of files) await cache.put(`${root}/onnx/${file}`, new Response("cached"));
+    for (const voice of ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"]) {
+      await cache.put(`${root}/voice_styles/${voice}.json`, new Response("{}"));
+    }
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  const panel = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
+  await expect(panel.getByText("Cached")).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Load cached model" })).toBeEnabled();
+});
+
 test("phrase lifecycle, persistence, favorites, theme, language and backup", async ({
   page,
 }) => {
