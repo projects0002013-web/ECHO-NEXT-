@@ -1501,3 +1501,87 @@ dialog textarea {
 :root[data-theme="dark"] .danger-outline {
   color: #f3939e;
 }
+
+
+/* ECHO NEXT 0.3 — refined voice studio surfaces */
+.panel {
+  border-radius: 16px;
+  box-shadow: 0 8px 28px #17213b08;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.panel:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+}
+.panel .section-head {
+  align-items: center;
+}
+.panel .section-head h2 {
+  letter-spacing: -0.35px;
+}
+.panel .badge {
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+}
+.panel label {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  color: var(--text);
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  font-weight: 550;
+}
+.panel input:not([type="checkbox"]):not([type="range"]),
+.panel textarea,
+.panel select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 11px 13px;
+  font-size: 0.86rem;
+  letter-spacing: 0;
+}
+.panel textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+.panel input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.panel .section-head button {
+  flex-shrink: 0;
+}
+.panel .field-note {
+  border-left: 3px solid var(--accent);
+  background: var(--tint);
+  border-radius: 0 10px 10px 0;
+  padding: 11px 13px;
+  line-height: 1.6;
+}
+.panel audio {
+  display: block;
+  border-radius: 12px;
+  min-height: 42px;
+}
+:root[data-theme="dark"] .panel {
+  box-shadow: 0 8px 28px #00000024;
+}
+@media (max-width: 700px) {
+  .panel {
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .panel .section-head {
+    align-items: flex-start;
+  }
+  .panel .section-head h2 {
+    max-width: 72%;
+    line-height: 1.4;
+  }
+}
