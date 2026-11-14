@@ -16,6 +16,12 @@ it("maps Belarusian to the correct BCP-47 voice locale", () => {
   expect(speechLocale("en")).toBe("en-US");
 });
 
+it("preserves explicit regional voice locales for preview playback", () => {
+  expect(speechLocale("en-GB")).toBe("en-GB");
+  expect(speechLocale("ru-RU")).toBe("ru-RU");
+  expect(speechLocale("be-BY")).toBe("be-BY");
+  expect(speechLocale("pt_BR")).toBe("pt-BR");
+});
 it("keeps the configured system speech rate when adaptive pacing is off", () => {
   const settings = { ...initialState().settings, rate: 1.2, adaptiveVoice: "off" as const };
   expect(adaptiveSpeechSettings("A long sentence with many words.", settings).rate).toBe(1.2);
