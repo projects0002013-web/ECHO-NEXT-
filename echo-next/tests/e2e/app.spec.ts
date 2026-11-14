@@ -35,6 +35,22 @@ test("Supertonic voice preferences survive a full app reload", async ({ page }) 
   await expect(restored.getByLabel("Speech speed")).toHaveValue("1.35");
 });
 
+test("partial Supertonic cache resumes only missing assets", async ({ page }) => {
+  await page.goto("./");
+  await page.evaluate(async () => {
+    const cache = await caches.open("echo-supertonic-3-v1");
+    const root = "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46";
+    await cache.put(`${root}/onnx/duration_predictor.onnx`, new Response("cached"));
+    await cache.put(`${root}/voice_styles/F1.json`, new Response("{}"));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  const panel = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
+  await expect(panel.getByRole("button", { name: "Resume setup (missing files only)" })).toBeEnabled();
+  await expect(panel.getByText(/Saved locally: 1\/6 model files and 1\/10 voice styles/)).toBeVisible();
+  await expect(panel.getByRole("button", { name: /Download & load \(~400 MB\)/ })).toHaveCount(0);
+});
+
 test("cached Supertonic files are offered for reload after app restart", async ({ page }) => {
   await page.goto("./");
   await page.evaluate(async () => {
