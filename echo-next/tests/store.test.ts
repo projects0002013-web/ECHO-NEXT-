@@ -78,7 +78,8 @@ describe("local communication data", () => {
   });
   it("defaults the new speech mode when reading legacy saved data", () => {
     const legacy = initialState();
-    const { speechMode: _ignored, ...legacySettings } = legacy.settings;
+    const legacySettings = { ...legacy.settings };
+    Reflect.deleteProperty(legacySettings, "speechMode");
     const restored = stateSchema.parse({ ...legacy, settings: legacySettings });
     expect(restored.settings.speechMode).toBe("auto");
   });
