@@ -139,7 +139,9 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
     ).toBe(true);
   }
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  await expect(page.getByText("Not configured", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Neural voice synthesis" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Generate speech" })).toBeDisabled();
+  await expect(page.getByText(/This does not clone a person/)).toBeVisible();
   await page.screenshot({
     path: "test-results/mobile-voice.png",
     fullPage: true,
