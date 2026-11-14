@@ -1328,8 +1328,8 @@ export default function App() {
                   </label>
                   <p className="field-note">
                     {t(
-                      "Automatic uses an installed offline neural model when available; otherwise ECHO uses the device voice. No text is sent online in this version.",
-                      "Автоматический режим использует установленную офлайн-модель, если она доступна; иначе ECHO использует голос устройства. В этой версии текст не отправляется в интернет.",
+                      "Automatic and Neural modes use downloaded offline models when available; otherwise ECHO falls back to the device voice so communication remains available. No text is sent online in this version.",
+                      "Автоматический режим и режим нейроголоса используют скачанные офлайн-модели, если они доступны. Иначе ECHO переключается на голос устройства, чтобы общение не прерывалось. В этой версии текст не отправляется в интернет.",
                     )}
                   </p>
                   <p className="field-note">
