@@ -4,7 +4,7 @@ import { VoiceRecorder } from "../src/services/recorder";
 import { initialState } from "../src/database/store";
 import { validateVoiceRequest } from "../src/services/ai";
 import { adaptiveSpeechSettings } from "../src/services/adaptiveSpeech";
-import { adaptiveSupertonicSpeed, loadSupertonicPreferences, saveSupertonicPreferences } from "../src/services/supertonic";
+import { adaptiveSupertonicSpeed, getSupertonicCacheStatus, loadSupertonicPreferences, saveSupertonicPreferences } from "../src/services/supertonic";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -54,6 +54,35 @@ it("clamps corrupted Supertonic speed and ignores unknown voices", () => {
   });
   expect(loadSupertonicPreferences()).toEqual({
     voice: "F1", language: "en", speed: 1.8, steps: 8, adaptive: false,
+  });
+});
+it("reports exactly which Supertonic assets survived an app restart", async () => {
+  vi.stubGlobal("caches", {
+    open: async () => ({
+      match: async (url: string) => url.includes("duration_predictor.onnx") || url.includes("/F1.json") ? new Response("cached") : undefined,
+    }),
+  });
+  expect(await getSupertonicCacheStatus()).toEqual({
+    available: true,
+    modelFilesCached: 1,
+    modelFilesTotal: 6,
+    voiceStylesCached: 1,
+    voiceStylesTotal: 10,
+    complete: false,
+  });
+});
+it("recognizes a complete Supertonic cache after an app restart", async () => {
+  vi.stubGlobal("caches", {
+    open: async () => ({
+      match: async () => new Response("cached"),
+    }),
+  });
+  expect((await getSupertonicCacheStatus()).complete).toBe(true);
+});
+it("reports unavailable Cache Storage instead of pretending offline files exist", async () => {
+  vi.stubGlobal("caches", undefined);
+  expect(await getSupertonicCacheStatus()).toMatchObject({
+    available: false, modelFilesCached: 0, voiceStylesCached: 0, complete: false,
   });
 });
 it("reports an unavailable browser speech engine", async () => {
