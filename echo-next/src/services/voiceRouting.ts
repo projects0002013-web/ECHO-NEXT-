@@ -113,5 +113,5 @@ export function resolveVoiceRoute(input: VoiceRouteInput): VoiceRoute {
 
   if (language === "en") return systemFallback(input, "kokoro");
   if (SUPERTONIC_LANGUAGES.has(language)) return systemFallback(input, "supertonic");
-  return systemFallback(input);
+  return { ...systemFallback(input), reason: "offline-language-fallback" };
 }
