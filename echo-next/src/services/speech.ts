@@ -185,6 +185,7 @@ class HybridSpeech implements SpeechEngine {
       supertonicInstalled,
       kokoroInstalled,
       systemVoiceAvailable,
+      preferredOfflineEngine: settings.speechMode === "system" ? "system" : undefined,
     });
 
     if (route.engine === "kokoro") {
