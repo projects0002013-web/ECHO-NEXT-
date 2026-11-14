@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  isSupertonicModelCached,
+  getSupertonicCacheStatus,
   loadSupertonic,
   modelStorageEstimate,
   removeSupertonicModel,
@@ -9,6 +9,7 @@ import {
   synthesizeSupertonic,
   type SupertonicLanguage,
   type SupertonicVoice,
+  type SupertonicCacheStatus,
   loadSupertonicPreferences,
   saveSupertonicPreferences,
 } from "../services/supertonic";
@@ -26,7 +27,9 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
-  const [cached, setCached] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState<SupertonicCacheStatus>({ available: true, modelFilesCached: 0, modelFilesTotal: 6, voiceStylesCached: 0, voiceStylesTotal: 10, complete: false });
+  const cached = cacheStatus.complete;
+  const hasPartialCache = cacheStatus.modelFilesCached > 0 || cacheStatus.voiceStylesCached > 0;
   const audioRef = useRef<HTMLAudioElement>(null);
   const urlRef = useRef("");
 
@@ -34,16 +37,21 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
     language === "ru" ? ru : language === "be" ? be : en;
 
   useEffect(() => {
-    void isSupertonicModelCached()
+    void getSupertonicCacheStatus()
       .then((stored) => {
-        setCached(stored);
-        if (stored) setMessage(copy(
-          "Supertonic model files are saved on this device. Tap Load cached model to prepare the engine; no download is needed.",
-          "Файлы Supertonic сохранены на устройстве. Нажмите «Загрузить сохранённую модель», чтобы подготовить движок. Повторное скачивание не требуется.",
-          "Файлы Supertonic захаваныя на прыладзе. Націсні «Загрузіць захаваную мадэль», каб падрыхтаваць рухавік. Паўторная загрузка не патрэбная."
+        setCacheStatus(stored);
+        if (stored.complete) setMessage(copy(
+          "All model files are saved on this device. Load the cached model; no download is needed.",
+          "Все файлы модели сохранены на устройстве. Загрузите сохранённую модель — повторное скачивание не требуется.",
+          "Усе файлы мадэлі захаваныя на прыладзе. Загрузі захаваную мадэль — паўторная загрузка не патрэбная."
+        ));
+        else if (stored.modelFilesCached > 0 || stored.voiceStylesCached > 0) setMessage(copy(
+          `Local cache found: ${stored.modelFilesCached}/${stored.modelFilesTotal} model files and ${stored.voiceStylesCached}/${stored.voiceStylesTotal} voice styles. Only missing files will be downloaded.`,
+          `Найдены сохранённые файлы: модель ${stored.modelFilesCached}/${stored.modelFilesTotal}, голоса ${stored.voiceStylesCached}/${stored.voiceStylesTotal}. Будут загружены только отсутствующие файлы.`,
+          `Знойдзены захаваныя файлы: мадэль ${stored.modelFilesCached}/${stored.modelFilesTotal}, галасы ${stored.voiceStylesCached}/${stored.voiceStylesTotal}. Будуць загружаныя толькі адсутныя файлы.`
         ));
       })
-      .catch(() => setCached(false));
+      .catch(() => setCacheStatus((current) => ({ ...current, available: false })));
     return () => {
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     };
@@ -62,9 +70,16 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
       "Правяраем сховішча і рыхтуем дадатковую мадэль памерам каля 400 МБ…"
     ));
     try {
-      const alreadyCached = await isSupertonicModelCached().catch(() => false);
-      setCached(alreadyCached);
-      if (!alreadyCached) {
+      const before = await getSupertonicCacheStatus();
+      setCacheStatus(before);
+      if (!before.available) {
+        throw new Error(copy(
+          "This browser cannot access local model storage, so Supertonic cannot be kept for offline use.",
+          "Браузер не предоставляет локальное хранилище моделей, поэтому Supertonic не сможет работать офлайн после перезапуска.",
+          "Браўзер не мае доступу да лакальнага сховішча мадэляў, таму Supertonic не зможа працаваць без інтэрнэту пасля перазапуску."
+        ));
+      }
+      if (!before.complete && !hasPartialCache) {
         const estimate = await modelStorageEstimate();
         if (estimate.available !== undefined && estimate.available < 420 * 1024 * 1024) {
           throw new Error(copy(
@@ -82,13 +97,16 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
           "Загружаем і рыхтуем файлы мадэлі. Не закрывай ECHO да завяршэння."
         ));
       });
-      const stored = await isSupertonicModelCached().catch(() => false);
-      setCached(stored);
+      const stored = await getSupertonicCacheStatus();
+      setCacheStatus(stored);
+      if (!stored.complete) throw new Error(copy(
+        "The model could not be fully saved on this device. Check available storage and retry; saved files will be reused.",
+        "Не удалось полностью сохранить модель на устройстве. Проверьте свободную память и повторите попытку; уже сохранённые файлы будут использованы повторно.",
+        "Не ўдалося цалкам захаваць мадэль на прыладзе. Правер вольнае месца і паўтары спробу; ужо захаваныя файлы будуць выкарыстаныя паўторна."
+      ));
       setStatus("ready");
       setProgress("");
-      setMessage(stored
-        ? copy("Supertonic 3 is ready and its model files are cached on this device.", "Supertonic 3 готова, файлы модели сохранены на устройстве.", "Supertonic 3 гатовая, файлы мадэлі захаваныя на прыладзе.")
-        : copy("Model loaded for this session. Browser storage did not confirm a complete offline cache.", "Модель загружена для этой сессии. Браузер не подтвердил полное сохранение для офлайн-работы.", "Мадэль загружаная для гэтай сесіі. Браўзер не пацвердзіў поўнае захаванне для працы без інтэрнэту."));
+      setMessage(copy("Supertonic 3 is ready. All model files are saved on this device.", "Supertonic 3 готова. Все файлы модели сохранены на устройстве.", "Supertonic 3 гатовая. Усе файлы мадэлі захаваныя на прыладзе."));
     } catch (error) {
       setStatus("error");
       setProgress("");
@@ -120,7 +138,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
 
   const clearModel = async () => {
     await removeSupertonicModel();
-    setCached(false);
+    setCacheStatus({ available: true, modelFilesCached: 0, modelFilesTotal: 6, voiceStylesCached: 0, voiceStylesTotal: 10, complete: false });
     setStatus("idle");
     setMessage(copy("Supertonic model cache removed from this browser.", "Кэш модели Supertonic удалён из этого браузера.", "Кэш мадэлі Supertonic выдалены з гэтага браўзера."));
   };
@@ -129,7 +147,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
     <section className="panel" aria-label={copy("Supertonic 3 multilingual neural speech", "Мультиязычный нейросетевой синтез Supertonic 3", "Шматмоўны нейрасеткавы сінтэз Supertonic 3")}>
       <div className="section-head">
         <h2>{copy("Supertonic 3 · Multilingual AI", "Supertonic 3 · Мультиязычный ИИ", "Supertonic 3 · Шматмоўны ШІ")}</h2>
-        <span className="badge">{status === "ready" ? "Ready" : cached ? "Cached" : "Optional"}</span>
+        <span className="badge">{status === "ready" ? "Ready" : cached ? "Cached" : hasPartialCache ? "Partial cache" : cacheStatus.available ? "Optional" : "Storage unavailable"}</span>
       </div>
       <p>{copy(
         "An additional on-device ONNX voice engine with 10 preset voices and 31 supported languages, including Russian and Ukrainian.",
@@ -140,6 +158,11 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
         "Optional first download: about 400 MB. Model weights use OpenRAIL-M. Download only if you have enough storage and a suitable device. This upstream model project is archived.",
         "Необязательная первая загрузка: около 400 МБ. Лицензия весов — OpenRAIL-M. Загружайте только при достаточном месте и подходящем устройстве. Исходный проект модели архивирован.",
         "Неабавязковая першая загрузка: каля 400 МБ. Ліцэнзія вагаў — OpenRAIL-M. Загружай толькі пры дастатковым месцы і на сумяшчальнай прыладзе. Зыходны праект мадэлі архіваваны."
+      )}</p>
+      <p className="field-note" role="status" aria-live="polite">{copy(
+        `Saved locally: ${cacheStatus.modelFilesCached}/${cacheStatus.modelFilesTotal} model files and ${cacheStatus.voiceStylesCached}/${cacheStatus.voiceStylesTotal} voice styles. Only files missing from this device are downloaded.`,
+        `Сохранено на устройстве: файлов модели ${cacheStatus.modelFilesCached}/${cacheStatus.modelFilesTotal}, голосов ${cacheStatus.voiceStylesCached}/${cacheStatus.voiceStylesTotal}. Скачиваются только отсутствующие файлы.`,
+        `Захавана на прыладзе: файлаў мадэлі ${cacheStatus.modelFilesCached}/${cacheStatus.modelFilesTotal}, галасоў ${cacheStatus.voiceStylesCached}/${cacheStatus.voiceStylesTotal}. Спампоўваюцца толькі адсутныя файлы.`
       )}</p>
       <label>
         {copy("Text (max 300 characters)", "Текст (до 300 символов)", "Тэкст (да 300 сімвалаў)")}
@@ -181,8 +204,8 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
         "Адаптыўны тэмп змяняе хуткасць у залежнасці ад даўжыні тэксту і пунктуацыі. Ён не распазнае эмоцыі і не клануе голас."
       )}</p>
       <div className="section-head">
-        <button className="outline" type="button" disabled={status === "loading" || status === "generating"} onClick={() => void load()}>
-          {status === "loading" ? copy("Loading…", "Загрузка…", "Загрузка…") : cached ? copy("Load cached model", "Загрузить сохранённую модель", "Загрузіць захаваную мадэль") : copy("Download & load (~400 MB)", "Загрузить и открыть (~400 МБ)", "Загрузіць і адкрыць (~400 МБ)")}
+        <button className="outline" type="button" disabled={status === "loading" || status === "generating" || !cacheStatus.available} onClick={() => void load()}>
+          {status === "loading" ? copy("Loading…", "Загрузка…", "Загрузка…") : cached ? copy("Load cached model", "Загрузить сохранённую модель", "Загрузіць захаваную мадэль") : hasPartialCache ? copy("Resume setup (missing files only)", "Продолжить установку (только недостающие файлы)", "Працягнуць усталяванне (толькі адсутныя файлы)") : copy("Download & load (~400 MB)", "Загрузить и открыть (~400 МБ)", "Загрузіць і адкрыць (~400 МБ)")}
         </button>
         <button className="primary" type="button" disabled={status !== "ready" || !text.trim()} onClick={() => void generate()}>
           {status === "generating" ? copy("Generating…", "Генерация…", "Стварэнне…") : copy("Generate speech", "Создать речь", "Стварыць маўленне")}
