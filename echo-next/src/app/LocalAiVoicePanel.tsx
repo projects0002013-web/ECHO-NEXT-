@@ -87,6 +87,7 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
   const previewVoice = async (selectedVoice: AIVoice) => {
     if (status !== "ready" || previewingVoice) return;
     setPreviewingVoice(selectedVoice);
+    audioRef.current?.pause();
     autoPlayPreviewRef.current = true;
     setMessage(copy("Creating a short voice preview…", "Создаю короткий образец голоса…", "Ствараю кароткі ўзор голасу…"));
     try {
@@ -156,7 +157,14 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
             <h3>{copy("Find your voice", "Найдите свой голос", "Знайдзіце свой голас")}</h3>
             <p>{copy("28 studio voices · preview before choosing", "28 студийных голосов · прослушайте перед выбором", "28 студыйных галасоў · праслухайце перад выбарам")}</p>
           </div>
-          <span className="voice-count"><strong>{visibleVoices.length}</strong><small> / {AI_VOICES.length}</small></span>
+          <div className="voice-picker-heading-actions">
+            <span className="voice-count"><strong>{visibleVoices.length}</strong><small> / {AI_VOICES.length}</small></span>
+            {status === "ready"
+              ? <span className="voice-model-ready"><Check size={14} /> {copy("Model loaded", "Модель загружена", "Мадэль загружана")}</span>
+              : <button className="voice-model-load" type="button" disabled={status === "loading" || status === "generating"} onClick={() => void load()}>
+                  {status === "loading" ? copy("Loading…", "Загрузка…", "Загрузка…") : status === "generating" ? copy("Working…", "Обработка…", "Апрацоўка…") : copy("Load AI model", "Загрузить ИИ", "Загрузіць мадэль ШІ")}
+                </button>}
+          </div>
         </div>
         <div className="voice-search">
           <Search size={18} />
@@ -202,10 +210,7 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
         <div className="voice-selected-note"><span className="voice-selected-check"><Check size={15} /></span><span><small>{copy("CURRENT SELECTION", "ТЕКУЩИЙ ВЫБОР", "БЯГУЧЫ ВЫБАР")}</small><strong>{selectedVoice?.label ?? voice}</strong></span></div>
         {status !== "ready" && <p className="voice-preview-hint">{copy("To listen to samples, load the AI model once. After that, previews are generated on this device.", "Чтобы слушать образцы, один раз загрузите ИИ-модель. После этого примеры создаются прямо на устройстве.", "Каб слухаць узоры, адзін раз загрузіце мадэль ШІ. Пасля гэтага ўзоры ствараюцца непасрэдна на прыладзе.")}</p>}
       </section>
-      <div className="section-head">
-        <button className="outline" type="button" disabled={status === "loading" || status === "generating"} onClick={() => void load()}>
-          {status === "loading" ? copy("Loading…", "Загружается…", "Загрузка…") : copy("Load AI model", "Загрузить ИИ", "Загрузіць мадэль ШІ")}
-        </button>
+      <div className="voice-generate-actions">
         <button className="primary" type="button" disabled={status !== "ready" || !text.trim()} onClick={() => void generate()}>
           {status === "generating" ? copy("Generating…", "Генерация…", "Стварэнне…") : copy("Generate speech", "Создать речь", "Стварыць маўленне")}
         </button>
