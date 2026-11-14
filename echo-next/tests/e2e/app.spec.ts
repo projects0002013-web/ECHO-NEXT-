@@ -13,17 +13,35 @@ function logOfflineErrors(page: Page) {
       console.info("ECHO_BROWSER_CONSOLE", message.text());
   });
 }
-test("Kokoro voice selection survives leaving and reopening Voice Studio", async ({ page }) => {
+test("ECHO brand logo and Kokoro voice selection render and persist", async ({ page }) => {
   await page.goto("./");
+  const brandLogo = page.locator(".brand-mark-logo img").first();
+  await expect(brandLogo).toHaveAttribute("src", /icon\\.svg$/);
+  await expect.poll(() => brandLogo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const panel = page.getByRole("region", { name: "Local AI speech synthesis" });
-  await panel.getByLabel("Kokoro voice").selectOption("bf_emma");
+  await expect(panel.getByRole("heading", { name: "Choose your voice" })).toBeVisible();
+  await expect(panel.locator(".voice-choice")).toHaveCount(28);
+  await panel.getByRole("button", { name: "UK English" }).click();
+  await expect(panel.locator(".voice-choice")).toHaveCount(8);
+  await panel.getByPlaceholder("Search voices").fill("Emma");
+  await expect(panel.locator(".voice-choice")).toHaveCount(1);
+  await panel.locator(".voice-choice-select").click();
+  await expect(panel.locator(".voice-choice.selected .voice-choice-copy strong")).toHaveText("Emma");
   await page.getByRole("button", { name: "Library", exact: true }).click();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).getByLabel("Kokoro voice")).toHaveValue("bf_emma");
+  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).locator(".voice-choice.selected .voice-choice-copy strong")).toHaveText("Emma");
   await page.reload();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).getByLabel("Kokoro voice")).toHaveValue("bf_emma");
+  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).locator(".voice-choice.selected .voice-choice-copy strong")).toHaveText("Emma");
+});
+
+test("system voice selection has a clear searchable choice interface", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
+  const picker = page.locator(".system-voice-picker");
+  await expect(picker.getByRole("button", { name: /Device default/ })).toBeVisible();
+  await expect(picker.getByPlaceholder("Search installed voices")).toBeVisible();
 });
 
 test("Supertonic voice preferences survive a full app reload", async ({ page }) => {
