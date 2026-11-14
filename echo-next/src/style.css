@@ -2629,7 +2629,7 @@ button:disabled {
   scrollbar-width: none;
 }
 .voice-engine-nav::-webkit-scrollbar { display: none; }
-.voice-engine-nav a {
+.voice-engine-nav button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2642,8 +2642,8 @@ button:disabled {
   font-weight: 650;
   white-space: nowrap;
 }
-.voice-engine-nav a:hover,
-.voice-engine-nav a:focus-visible {
+.voice-engine-nav button:hover,
+.voice-engine-nav button:focus-visible {
   color: var(--accent);
   background: var(--tint);
   border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
@@ -2663,7 +2663,7 @@ button:disabled {
     margin-bottom: 14px;
     padding: 5px;
   }
-  .voice-engine-nav a {
+  .voice-engine-nav button {
     min-height: 42px;
     padding: 8px 11px;
     font-size: 0.71rem;
