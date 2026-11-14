@@ -5,6 +5,7 @@ import { initialState } from "../src/database/store";
 import { validateVoiceRequest } from "../src/services/ai";
 import { adaptiveSpeechSettings } from "../src/services/adaptiveSpeech";
 import { adaptiveSupertonicSpeed, getSupertonicCacheStatus, loadSupertonicPreferences, saveSupertonicPreferences } from "../src/services/supertonic";
+import { AI_VOICES, loadLocalAIPreferences, saveLocalAIPreferences } from "../src/services/localAi";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -84,6 +85,27 @@ it("reports unavailable Cache Storage instead of pretending offline files exist"
   expect(await getSupertonicCacheStatus()).toMatchObject({
     available: false, modelFilesCached: 0, voiceStylesCached: 0, complete: false,
   });
+});
+it("exposes the full supported Kokoro preset voice list", () => {
+  expect(AI_VOICES).toHaveLength(28);
+  expect(AI_VOICES.map((voice) => voice.id)).toContain("bf_lily");
+  expect(AI_VOICES.map((voice) => voice.id)).toContain("am_santa");
+});
+it("persists the selected Kokoro voice across app navigation and reload", () => {
+  const storage = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+  });
+  saveLocalAIPreferences({ voice: "bf_emma" });
+  expect(loadLocalAIPreferences()).toEqual({ voice: "bf_emma" });
+});
+it("recovers from corrupted Kokoro voice preferences", () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => "{invalid-json",
+    setItem: vi.fn(),
+  });
+  expect(loadLocalAIPreferences()).toEqual({ voice: "af_heart" });
 });
 it("reports an unavailable browser speech engine", async () => {
   const engine = new BrowserSpeech();
