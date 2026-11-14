@@ -23,7 +23,11 @@ jobs:
           cache: npm
           cache-dependency-path: echo-next/package-lock.json
       - name: Install pinned inference library
-        run: npm install --save-exact kokoro-js@1.2.1
+        run: |
+          npm install --save-exact kokoro-js@1.2.1
+          # Only the transitive Node image-processing package is overridden.
+          npm pkg set 'overrides.sharp=0.35.5'
+          npm install
       - name: Test dependency compatibility
         run: |
           npm run typecheck
