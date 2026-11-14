@@ -174,7 +174,11 @@ export async function loadState(): Promise<State> {
 }
 export async function saveState(s: State) {
   const d = await db();
-  await d.put("state", stateSchema.parse(s), "current");
+  const tx = d.transaction("state", "readwrite");
+  await tx.store.put(stateSchema.parse(s), "current");
+  // Resolve only after IndexedDB confirms the transaction has committed.
+  // A request succeeding is not the same as the transaction being durable.
+  await tx.done;
 }
 export async function getClips(): Promise<Clip[]> {
   return (await db()).getAll("clips");
