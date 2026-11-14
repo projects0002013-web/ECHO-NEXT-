@@ -669,8 +669,8 @@ export default function App() {
   if (!ready)
     return (
       <main className="fatal" aria-busy="true">
-        <div className="brand-mark">
-          <AudioLines />
+        <div className="brand-mark brand-mark-logo">
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="ECHO" />
         </div>
         <p>Opening ECHO…</p>
       </main>
@@ -692,12 +692,12 @@ export default function App() {
             go("home");
           }}
         >
-          <span className="brand-mark">
-            <AudioLines size={25} />
+          <span className="brand-mark brand-mark-logo">
+            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" />
           </span>
-          <span>
+          <span className="brand-wordmark">
             ECHO
-            <small>{t("A voice of your own", "Ваш собственный голос")}</small>
+            <small>{t("ГОЛОС ТЕХ, КТО НЕ СЛЫШИТ", "ГОЛОС ТЕХ, КТО НЕ СЛЫШИТ")}</small>
           </span>
         </a>
         <div className="nav-label">{t("YOUR SPACE", "ВАШЕ ПРОСТРАНСТВО")}</div>
@@ -728,7 +728,7 @@ export default function App() {
             </div>
           </div>
           <button className="device-profile" onClick={() => go("settings")}>
-            <span className="avatar">E</span>
+            <span className="avatar avatar-logo"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="ECHO" /></span>
             <span>
               {t("My personal space", "Моё пространство")}
               <small>
