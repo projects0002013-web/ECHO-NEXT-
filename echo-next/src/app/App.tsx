@@ -421,7 +421,7 @@ export default function App() {
     setSpeaking(true);
     setNotice("");
     try {
-      await speech.speak(value, adaptiveSpeechSettings(value, s), language);
+      await speech.speak(value, s, language);
       if (id === speakId.current)
         update((v) => ({
           ...v,
