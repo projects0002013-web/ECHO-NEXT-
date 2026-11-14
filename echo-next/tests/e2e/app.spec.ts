@@ -20,11 +20,15 @@ test("ECHO brand logo and Kokoro voice selection render and persist", async ({ p
   await expect.poll(() => brandLogo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const panel = page.getByRole("region", { name: "Local AI speech synthesis" });
-  await expect(panel.getByRole("heading", { name: "Choose your voice" })).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "Find your voice" })).toBeVisible();
   await expect(panel.locator(".voice-choice")).toHaveCount(28);
   await panel.getByRole("button", { name: "UK English" }).click();
   await expect(panel.locator(".voice-choice")).toHaveCount(8);
-  await panel.getByPlaceholder("Search voices").fill("Emma");
+  await panel.getByRole("button", { name: "Female", exact: true }).click();
+  await expect(panel.locator(".voice-choice")).toHaveCount(4);
+  await panel.getByRole("button", { name: "All", exact: true }).click();
+  await expect(panel.locator(".voice-choice")).toHaveCount(8);
+  await panel.getByPlaceholder("Search by name, accent or voice type").fill("Emma");
   await expect(panel.locator(".voice-choice")).toHaveCount(1);
   await panel.locator(".voice-choice-select").click();
   await expect(panel.locator(".voice-choice.selected .voice-choice-copy strong")).toHaveText("Emma");
@@ -41,7 +45,9 @@ test("system voice selection has a clear searchable choice interface", async ({ 
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const picker = page.locator(".system-voice-picker");
   await expect(picker.getByRole("button", { name: /Device default/ })).toBeVisible();
-  await expect(picker.getByPlaceholder("Search installed voices")).toBeVisible();
+  await expect(picker.getByPlaceholder("Search by name or language")).toBeVisible();
+  await expect(picker.getByRole("button", { name: "Offline", exact: true })).toBeVisible();
+  await expect(picker.getByRole("button", { name: "Online", exact: true })).toBeVisible();
 });
 
 test("Supertonic voice preferences survive a full app reload", async ({ page }) => {
