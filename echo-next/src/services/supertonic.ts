@@ -11,6 +11,43 @@ export const SUPERTONIC_LANGUAGES = [
 export type SupertonicLanguage = (typeof SUPERTONIC_LANGUAGES)[number][0];
 export const SUPERTONIC_VOICES = ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"] as const;
 export type SupertonicVoice = (typeof SUPERTONIC_VOICES)[number];
+
+export type SupertonicPreferences = {
+  voice: SupertonicVoice;
+  language: SupertonicLanguage;
+  speed: number;
+  steps: 5 | 8 | 12;
+  adaptive: boolean;
+};
+const PREFERENCES_KEY = "echo-supertonic-preferences-v1";
+
+export function loadSupertonicPreferences(defaultLanguage: SupertonicLanguage = "en"): SupertonicPreferences {
+  const defaults: SupertonicPreferences = { voice: "F1", language: defaultLanguage, speed: 1, steps: 8, adaptive: true };
+  try {
+    const raw = globalThis.localStorage?.getItem(PREFERENCES_KEY);
+    if (!raw) return defaults;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object") return defaults;
+    const saved = value as Record<string, unknown>;
+    return {
+      voice: SUPERTONIC_VOICES.includes(saved.voice as SupertonicVoice) ? saved.voice as SupertonicVoice : defaults.voice,
+      language: SUPERTONIC_LANGUAGES.some(([code]) => code === saved.language) ? saved.language as SupertonicLanguage : defaults.language,
+      speed: typeof saved.speed === "number" && Number.isFinite(saved.speed) ? Math.max(0.7, Math.min(1.8, saved.speed)) : defaults.speed,
+      steps: saved.steps === 5 || saved.steps === 8 || saved.steps === 12 ? saved.steps : defaults.steps,
+      adaptive: typeof saved.adaptive === "boolean" ? saved.adaptive : defaults.adaptive,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+export function saveSupertonicPreferences(preferences: SupertonicPreferences): void {
+  try {
+    globalThis.localStorage?.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+  } catch {
+    // Private browsing, disabled storage, or a full device must not break speech.
+  }
+}
 export const SUPERTONIC_MODEL_SIZE_BYTES = 398 * 1024 * 1024;
 const MODEL_REVISION = "aafc6e32416a594460b32413efc49d7fe4ce6d46";
 const ROOT = `https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/${MODEL_REVISION}`;
