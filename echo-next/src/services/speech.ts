@@ -168,6 +168,9 @@ class HybridSpeech implements SpeechEngine {
     if (!clean) return;
     const requestId = ++speechRequestId;
     const isCurrentRequest = () => requestId === speechRequestId;
+    stopGeneratedAudio();
+    await this.system.stop().catch(() => undefined);
+    if (!isCurrentRequest()) return;
     const locale = speechLocale(language);
     const languageCode = locale.split("-")[0].toLowerCase();
     const installedSystemVoices = await this.system.voices().catch(() => []);
@@ -195,6 +198,7 @@ class HybridSpeech implements SpeechEngine {
     if (route.engine === "kokoro") {
       try {
         if (!isLocalAIReady()) await loadLocalAI();
+        if (!isCurrentRequest()) return;
         const { voice } = loadLocalAIPreferences();
         const audio = await synthesizeLocalAI(clean, voice);
         if (!isCurrentRequest()) return;
@@ -204,6 +208,7 @@ class HybridSpeech implements SpeechEngine {
         // A browser cache may have been cleared since installation. Preserve
         // communication by falling back to the device's speech engine.
       }
+      if (!isCurrentRequest()) return;
     }
 
     if (route.engine === "supertonic") {
@@ -212,6 +217,7 @@ class HybridSpeech implements SpeechEngine {
         if (!supported) throw new Error("Supertonic does not support this language.");
         const prefs = loadSupertonicPreferences(languageCode as SupertonicLanguage);
         await loadSupertonic();
+        if (!isCurrentRequest()) return;
         const audio = await synthesizeSupertonic(
           clean,
           prefs.voice,
@@ -226,6 +232,7 @@ class HybridSpeech implements SpeechEngine {
       } catch {
         // If a cached model cannot initialize on this device, use system TTS.
       }
+      if (!isCurrentRequest()) return;
     }
 
     if (isCurrentRequest()) await this.system.speak(clean, settings, language);
