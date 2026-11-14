@@ -3,6 +3,8 @@ import { BrowserSpeech, speechLocale } from "../src/services/speech";
 import { VoiceRecorder } from "../src/services/recorder";
 import { initialState } from "../src/database/store";
 import { validateVoiceRequest } from "../src/services/ai";
+import { adaptiveSpeechSettings } from "../src/services/adaptiveSpeech";
+import { adaptiveSupertonicSpeed } from "../src/services/supertonic";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -11,6 +13,20 @@ it("maps Belarusian to the correct BCP-47 voice locale", () => {
   expect(speechLocale("be")).toBe("be-BY");
   expect(speechLocale("ru")).toBe("ru-RU");
   expect(speechLocale("en")).toBe("en-US");
+});
+
+it("keeps the configured system speech rate when adaptive pacing is off", () => {
+  const settings = { ...initialState().settings, rate: 1.2, adaptiveVoice: "off" as const };
+  expect(adaptiveSpeechSettings("A long sentence with many words.", settings).rate).toBe(1.2);
+});
+it("slows longer phrases conservatively when adaptive pacing is enabled", () => {
+  const settings = { ...initialState().settings, rate: 1, adaptiveVoice: "smart" as const };
+  expect(adaptiveSpeechSettings("This is a sentence with enough words to activate the adaptive pacing rule.", settings).rate).toBe(0.95);
+});
+it("adapts Supertonic speed within its supported range", () => {
+  expect(adaptiveSupertonicSpeed("A long sentence with many words that should be spoken more slowly.", 1, true)).toBe(0.95);
+  expect(adaptiveSupertonicSpeed("Hello!", 1, true)).toBe(1.02);
+  expect(adaptiveSupertonicSpeed("Hello.", 1, false)).toBe(1);
 });
 it("reports an unavailable browser speech engine", async () => {
   const engine = new BrowserSpeech();
