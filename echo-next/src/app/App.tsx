@@ -71,6 +71,7 @@ import { hasLocalAIInstallConsent } from "../services/localAi";
 import { isSupertonicModelCached } from "../services/supertonic";
 import { VoiceRecorder } from "../services/recorder";
 import { adaptiveSpeechSettings } from "../services/adaptiveSpeech";
+import { inspectVoiceSample } from "../services/voiceSample";
 import LocalAiVoicePanel from "./LocalAiVoicePanel";
 import SupertonicVoicePanel from "./SupertonicVoicePanel";
 type Page = "home" | "communicate" | "voice" | "library" | "settings";
@@ -134,6 +135,8 @@ export default function App() {
     [recording, setRecording] = useState(false),
     [recordBusy, setRecordBusy] = useState(false),
     [clipName, setClipName] = useState(""),
+    [sampleConsent, setSampleConsent] = useState(false),
+    [sampleReport, setSampleReport] = useState(""),
     [editor, setEditor] = useState<Editor>(null),
     [confirm, setConfirm] = useState<{
       message: string;
@@ -420,8 +423,11 @@ export default function App() {
     document.documentElement.dataset.motion = s.reducedMotion
       ? "reduced"
       : "normal";
+    document.documentElement.dataset.contrast = s.highContrast
+      ? "high"
+      : "normal";
     return () => mq.removeEventListener("change", apply);
-  }, [s.theme, s.language, s.textSize, s.reducedMotion]);
+  }, [s.theme, s.language, s.textSize, s.reducedMotion, s.highContrast]);
   useEffect(() => {
     const pause = () => {
       if (document.hidden) {
@@ -622,6 +628,67 @@ export default function App() {
       setRecording(true);
     } catch (e) {
       setNotice((e as Error).message);
+    } finally {
+      setRecordBusy(false);
+    }
+  }
+  async function importVoiceSample(file: File) {
+    if (!sampleConsent || recordBusy) return;
+    setRecordBusy(true);
+    setSampleReport("");
+    try {
+      const supportedTypes = new Set([
+        "audio/webm",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/aac",
+        "audio/x-m4a",
+        "audio/ogg",
+        "audio/wav",
+      ]);
+      const type = file.type.split(";")[0].toLowerCase();
+      if (!supportedTypes.has(type))
+        throw new Error(
+          t(
+            "Choose a WAV, MP3, M4A, AAC, OGG or WebM audio file.",
+            "Выберите аудиофайл WAV, MP3, M4A, AAC, OGG или WebM.",
+          ),
+        );
+      const assessment = await inspectVoiceSample(file);
+      if (!assessment.accepted) throw new Error(assessment.problems.join(" "));
+      const existing = await getClips();
+      if (
+        existing.length >= 100 ||
+        existing.reduce((total, clip) => total + clip.blob.size, file.size) >
+          30 * 1024 * 1024
+      )
+        throw new Error(
+          t(
+            "Recording storage limit reached (100 clips / 30 MB). Export a backup and delete older clips.",
+            "Лимит записей: 100 записей / 30 МБ. Создайте копию и удалите старые записи.",
+          ),
+        );
+      await putClip({
+        id: crypto.randomUUID(),
+        name: (clipName.trim() || file.name.replace(/\.[^.]+$/u, "")).slice(
+          0,
+          100,
+        ),
+        blob: new Blob([await file.arrayBuffer()], { type }),
+        createdAt: Date.now(),
+      });
+      setClips(await getClips());
+      setClipName("");
+      setSampleReport(
+        t(
+          `Quality check passed · ${assessment.durationSeconds.toFixed(1)} seconds · stored locally. This is a prepared sample, not a cloned voice.`,
+          `Проверка качества пройдена · ${assessment.durationSeconds.toFixed(1)} с · образец сохранён локально. Это подготовленный образец, а не клонированный голос.`,
+        ),
+      );
+    } catch (error) {
+      setSampleReport(
+        error instanceof Error ? error.message : "Could not import audio.",
+      );
     } finally {
       setRecordBusy(false);
     }
@@ -1831,6 +1898,47 @@ export default function App() {
                       "Требуется доступ к микрофону · До 60 секунд",
                     )}
                   </p>
+                  <div className="voice-sample-import">
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        checked={sampleConsent}
+                        onChange={(event) =>
+                          setSampleConsent(event.target.checked)
+                        }
+                      />
+                      <span>
+                        {t(
+                          "I confirm the voice owner consented to preparing this local sample.",
+                          "Я подтверждаю согласие владельца голоса на подготовку этого локального образца.",
+                        )}
+                      </span>
+                    </label>
+                    <label
+                      className="file-button"
+                      aria-disabled={!sampleConsent || recordBusy}
+                    >
+                      <Upload size={17} />
+                      {t("Import voice sample", "Импортировать образец голоса")}
+                      <input
+                        type="file"
+                        accept="audio/wav,audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/webm,.m4a"
+                        disabled={!sampleConsent || recordBusy}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = "";
+                          if (file) void importVoiceSample(file);
+                        }}
+                      />
+                    </label>
+                    <p className="field-note" role="status" aria-live="polite">
+                      {sampleReport ||
+                        t(
+                          "Imported samples are decoded and checked locally for duration, silence and clipping. No cloning engine is enabled and nothing is uploaded.",
+                          "Импортированный образец локально проверяется на длительность, тишину и перегрузку. Движок клонирования не включён, данные никуда не отправляются.",
+                        )}
+                    </p>
+                  </div>
                   {clips.map((c) => (
                     <div className="clip-row" key={c.id}>
                       <Headphones size={18} />
@@ -1979,6 +2087,16 @@ export default function App() {
                       }
                     />
                     <span>{t("Reduce motion", "Уменьшить анимацию")}</span>
+                  </label>
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={s.highContrast}
+                      onChange={(e) =>
+                        setting("highContrast", e.target.checked)
+                      }
+                    />
+                    <span>{t("High contrast", "Высокая контрастность")}</span>
                   </label>
                   <p className="field-note">
                     {t(

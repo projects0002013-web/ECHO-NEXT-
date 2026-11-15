@@ -11,6 +11,7 @@ export const settingsSchema = z.object({
   textSize: z.number().min(14).max(24),
   cardSize: z.enum(["comfortable", "compact"]),
   reducedMotion: z.boolean(),
+  highContrast: z.boolean().default(false),
 });
 const categorySchema = z.object({
   id: z.string().min(1).max(100),
@@ -158,6 +159,7 @@ export function initialState(): State {
       textSize: 16,
       cardSize: "comfortable",
       reducedMotion: false,
+      highContrast: false,
     },
     profiles: [],
   };
@@ -240,6 +242,9 @@ const backupSchema = z
             "audio/webm",
             "audio/webm;codecs=opus",
             "audio/mp4",
+            "audio/mpeg",
+            "audio/aac",
+            "audio/x-m4a",
             "audio/ogg",
             "audio/ogg;codecs=opus",
             "audio/wav",

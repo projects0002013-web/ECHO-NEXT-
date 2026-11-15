@@ -74,7 +74,9 @@ describe("local communication data", () => {
     await saveState(s);
     const restored = await loadState();
     expect(restored.settings.language).toBe("be");
-    expect(restored.phrases.find((p) => p.id === "be-test")?.language).toBe("be");
+    expect(restored.phrases.find((p) => p.id === "be-test")?.language).toBe(
+      "be",
+    );
   });
   it("defaults the new speech mode when reading legacy saved data", () => {
     const legacy = initialState();
@@ -82,6 +84,7 @@ describe("local communication data", () => {
     Reflect.deleteProperty(legacySettings, "speechMode");
     const restored = stateSchema.parse({ ...legacy, settings: legacySettings });
     expect(restored.settings.speechMode).toBe("auto");
+    expect(restored.settings.highContrast).toBe(false);
   });
   it("persists the selected speech engine mode", async () => {
     const s = initialState();
@@ -93,10 +96,12 @@ describe("local communication data", () => {
     const s = initialState();
     s.settings.theme = "dark";
     s.settings.textSize = 22;
+    s.settings.highContrast = true;
     await saveState(s);
     expect((await loadState()).settings).toMatchObject({
       theme: "dark",
       textSize: 22,
+      highContrast: true,
     });
   });
   it("restores a validated backup transactionally", async () => {
@@ -152,13 +157,15 @@ describe("local communication data", () => {
     const payload = JSON.stringify({
       format: "echo-backup",
       state: initialState(),
-      clips: [{
-        id: "oversized",
-        name: "Too large",
-        type: "audio/mp4",
-        data: oversized,
-        createdAt: 1,
-      }],
+      clips: [
+        {
+          id: "oversized",
+          name: "Too large",
+          type: "audio/mp4",
+          data: oversized,
+          createdAt: 1,
+        },
+      ],
     });
     await expect(restoreBackup(payload)).rejects.toThrow();
     expect((await loadState()).phrases[0].text).toBe("Keep this phrase");

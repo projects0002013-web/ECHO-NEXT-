@@ -13,14 +13,47 @@ function logOfflineErrors(page: Page) {
       console.info("ECHO_BROWSER_CONSOLE", message.text());
   });
 }
-test("ECHO brand logo and Kokoro voice selection render and persist", async ({ page }) => {
+
+function makeVoiceSampleWav(seconds = 4, sampleRate = 8000): Buffer {
+  const sampleCount = seconds * sampleRate;
+  const buffer = Buffer.alloc(44 + sampleCount * 2);
+  buffer.write("RIFF", 0);
+  buffer.writeUInt32LE(36 + sampleCount * 2, 4);
+  buffer.write("WAVEfmt ", 8);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * 2, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write("data", 36);
+  buffer.writeUInt32LE(sampleCount * 2, 40);
+  for (let index = 0; index < sampleCount; index++)
+    buffer.writeInt16LE(
+      Math.round(Math.sin((index * 2 * Math.PI * 220) / sampleRate) * 5000),
+      44 + index * 2,
+    );
+  return buffer;
+}
+test("ECHO brand logo and Kokoro voice selection render and persist", async ({
+  page,
+}) => {
   await page.goto("./");
   const brandLogo = page.locator(".brand-mark-logo img").first();
   await expect(brandLogo).toHaveAttribute("src", /icon\.svg$/);
-  await expect.poll(() => brandLogo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  await expect
+    .poll(() =>
+      brandLogo.evaluate(
+        (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+      ),
+    )
+    .toBe(true);
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const shortcuts = page.locator(".voice-engine-nav");
-  await expect(shortcuts.getByRole("button", { name: "System TTS" })).toHaveCount(0);
+  await expect(
+    shortcuts.getByRole("button", { name: "System TTS" }),
+  ).toHaveCount(0);
   await shortcuts.getByRole("button", { name: "Kokoro" }).click();
   await expect(page.locator("#kokoro-voice-engine")).toBeInViewport();
   await shortcuts.getByRole("button", { name: "Supertonic" }).click();
@@ -29,7 +62,9 @@ test("ECHO brand logo and Kokoro voice selection render and persist", async ({ p
   await expect(page.locator("#recorded-voice-panel")).toBeInViewport();
   await expect(page.locator("#system-voice-engine")).toBeHidden();
   const panel = page.getByRole("region", { name: "Local AI speech synthesis" });
-  await expect(panel.getByRole("heading", { name: "Find your voice" })).toBeVisible();
+  await expect(
+    panel.getByRole("heading", { name: "Find your voice" }),
+  ).toBeVisible();
   await expect(panel.locator(".voice-choice")).toHaveCount(28);
   await panel.getByRole("button", { name: "UK English", exact: true }).click();
   await expect(panel.locator(".voice-choice")).toHaveCount(8);
@@ -37,30 +72,52 @@ test("ECHO brand logo and Kokoro voice selection render and persist", async ({ p
   await expect(panel.locator(".voice-choice")).toHaveCount(4);
   await panel.getByRole("button", { name: "All", exact: true }).click();
   await expect(panel.locator(".voice-choice")).toHaveCount(8);
-  await panel.getByPlaceholder("Search by name, accent or voice type").fill("Emma");
+  await panel
+    .getByPlaceholder("Search by name, accent or voice type")
+    .fill("Emma");
   await expect(panel.locator(".voice-choice")).toHaveCount(1);
   await panel.locator(".voice-choice-select").click();
-  await expect(panel.locator(".voice-choice.selected .voice-choice-copy strong")).toHaveText("Emma");
+  await expect(
+    panel.locator(".voice-choice.selected .voice-choice-copy strong"),
+  ).toHaveText("Emma");
   await page.getByRole("button", { name: "Library", exact: true }).click();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).locator(".voice-choice.selected .voice-choice-copy strong")).toHaveText("Emma");
+  await expect(
+    page
+      .getByRole("region", { name: "Local AI speech synthesis" })
+      .locator(".voice-choice.selected .voice-choice-copy strong"),
+  ).toHaveText("Emma");
   await page.reload();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).locator(".voice-choice.selected .voice-choice-copy strong")).toHaveText("Emma");
+  await expect(
+    page
+      .getByRole("region", { name: "Local AI speech synthesis" })
+      .locator(".voice-choice.selected .voice-choice-copy strong"),
+  ).toHaveText("Emma");
 });
 
-test("system voice picker is hidden while the internal fallback remains available", async ({ page }) => {
+test("system voice picker is hidden while the internal fallback remains available", async ({
+  page,
+}) => {
   await page.goto("./");
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   await expect(page.locator(".system-voice-picker")).toBeHidden();
   await expect(page.locator("#system-voice-engine")).toBeHidden();
-  await expect(page.locator(".voice-engine-nav").getByRole("button", { name: "System TTS" })).toHaveCount(0);
+  await expect(
+    page
+      .locator(".voice-engine-nav")
+      .getByRole("button", { name: "System TTS" }),
+  ).toHaveCount(0);
 });
 
-test("Supertonic voice preferences survive a full app reload", async ({ page }) => {
+test("Supertonic voice preferences survive a full app reload", async ({
+  page,
+}) => {
   await page.goto("./");
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  const panel = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
+  const panel = page.getByRole("region", {
+    name: "Supertonic 3 multilingual neural speech",
+  });
   await panel.getByRole("button", { name: /Male M3/ }).click();
   await panel.getByLabel("Speech language").selectOption("ru");
   await panel.getByLabel("Quality steps").selectOption("12");
@@ -71,46 +128,90 @@ test("Supertonic voice preferences survive a full app reload", async ({ page }) 
   await expect(panel.getByLabel("Speech speed")).toHaveValue("1.45");
   await page.reload();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  const restored = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
-  await expect(restored.getByRole("button", { name: "Male M3" })).toHaveAttribute("aria-pressed", "true");
+  const restored = page.getByRole("region", {
+    name: "Supertonic 3 multilingual neural speech",
+  });
+  await expect(
+    restored.getByRole("button", { name: "Male M3" }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(restored.getByLabel("Speech language")).toHaveValue("ru");
   await expect(restored.getByLabel("Quality steps")).toHaveValue("12");
   await expect(restored.getByLabel("Adaptive pacing")).not.toBeChecked();
   await expect(restored.getByLabel("Speech speed")).toHaveValue("1.45");
 });
 
-test("partial Supertonic cache resumes only missing assets", async ({ page }) => {
+test("partial Supertonic cache resumes only missing assets", async ({
+  page,
+}) => {
   await page.goto("./");
   await page.evaluate(async () => {
     const cache = await caches.open("echo-supertonic-3-v1");
-    const root = "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46";
-    await cache.put(`${root}/onnx/duration_predictor.onnx`, new Response("cached"));
+    const root =
+      "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46";
+    await cache.put(
+      `${root}/onnx/duration_predictor.onnx`,
+      new Response("cached"),
+    );
     await cache.put(`${root}/voice_styles/F1.json`, new Response("{}"));
   });
   await page.reload();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  const panel = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
-  await expect(panel.getByRole("button", { name: "Resume setup (missing files only)" })).toBeEnabled();
-  await expect(panel.getByText(/Saved locally: 1\/6 model files and 1\/10 voice styles/)).toBeVisible();
-  await expect(panel.getByRole("button", { name: /Download & load \(~400 MB\)/ })).toHaveCount(0);
+  const panel = page.getByRole("region", {
+    name: "Supertonic 3 multilingual neural speech",
+  });
+  await expect(
+    panel.getByRole("button", { name: "Resume setup (missing files only)" }),
+  ).toBeEnabled();
+  await expect(
+    panel.getByText(/Saved locally: 1\/6 model files and 1\/10 voice styles/),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: /Download & load \(~400 MB\)/ }),
+  ).toHaveCount(0);
 });
 
-test("cached Supertonic files are offered for reload after app restart", async ({ page }) => {
+test("cached Supertonic files are offered for reload after app restart", async ({
+  page,
+}) => {
   await page.goto("./");
   await page.evaluate(async () => {
     const cache = await caches.open("echo-supertonic-3-v1");
-    const root = "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46";
-    const files = ["duration_predictor.onnx", "text_encoder.onnx", "vector_estimator.onnx", "vocoder.onnx", "tts.json", "unicode_indexer.json"];
-    for (const file of files) await cache.put(`${root}/onnx/${file}`, new Response("cached"));
-    for (const voice of ["F1", "F2", "F3", "F4", "F5", "M1", "M2", "M3", "M4", "M5"]) {
+    const root =
+      "https://huggingface.co/supertone-oss-archive/supertonic-3/resolve/aafc6e32416a594460b32413efc49d7fe4ce6d46";
+    const files = [
+      "duration_predictor.onnx",
+      "text_encoder.onnx",
+      "vector_estimator.onnx",
+      "vocoder.onnx",
+      "tts.json",
+      "unicode_indexer.json",
+    ];
+    for (const file of files)
+      await cache.put(`${root}/onnx/${file}`, new Response("cached"));
+    for (const voice of [
+      "F1",
+      "F2",
+      "F3",
+      "F4",
+      "F5",
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5",
+    ]) {
       await cache.put(`${root}/voice_styles/${voice}.json`, new Response("{}"));
     }
   });
   await page.reload();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  const panel = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
+  const panel = page.getByRole("region", {
+    name: "Supertonic 3 multilingual neural speech",
+  });
   await expect(panel.getByText("Cached", { exact: true })).toBeVisible();
-  await expect(panel.getByRole("button", { name: "Reload saved model" })).toBeEnabled();
+  await expect(
+    panel.getByRole("button", { name: "Reload saved model" }),
+  ).toBeEnabled();
 });
 
 test("phrase lifecycle, persistence, favorites, theme, language and backup", async ({
@@ -131,7 +232,9 @@ test("phrase lifecycle, persistence, favorites, theme, language and backup", asy
     page.getByRole("button", { name: "My test phrase", exact: true }),
   ).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Make yourself heard." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Make yourself heard." }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "My test phrase", exact: true }),
   ).toBeVisible();
@@ -222,9 +325,11 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
     await navigator.serviceWorker.ready;
   });
   // ready means an active worker exists, but it may not yet control the page.
-  await expect.poll(() => page.evaluate(
-    () => Boolean(navigator.serviceWorker.controller),
-  )).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() => Boolean(navigator.serviceWorker.controller)),
+    )
+    .toBe(true);
   await page.reload();
   for (const label of [
     "Home",
@@ -241,10 +346,24 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
     ).toBe(true);
   }
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Neural voice synthesis" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).getByRole("button", { name: "Generate speech" })).toBeDisabled();
-  await expect(page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" }).getByRole("button", { name: /Download & load/ })).toBeEnabled();
+  await expect(
+    page.getByRole("heading", { name: "Neural voice synthesis" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Local AI speech synthesis" })
+      .getByRole("button", { name: "Generate speech" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("region", {
+      name: "Supertonic 3 multilingual neural speech",
+    }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Supertonic 3 multilingual neural speech" })
+      .getByRole("button", { name: /Download & load/ }),
+  ).toBeEnabled();
   await expect(page.getByText(/This does not clone a person/)).toBeVisible();
   await page.screenshot({
     path: "test-results/mobile-voice.png",
@@ -260,16 +379,21 @@ test("mobile screens fit, voice states are honest, offline reload works", async 
     caches: await caches.keys(),
     cacheFiles: await (async () => {
       const names = await caches.keys();
-      const cached = names[0] && await caches.open(names[0]);
-      return cached ? (await cached.keys()).map((r) => new URL(r.url).pathname) : [];
+      const cached = names[0] && (await caches.open(names[0]));
+      return cached
+        ? (await cached.keys()).map((r) => new URL(r.url).pathname)
+        : [];
     })(),
     scripts: Array.from(document.scripts).map((script) => script.src),
     url: location.href,
   }));
-  console.info("ECHO_OFFLINE_DIAGNOSTIC", JSON.stringify({
-    ...offlineInfo,
-    responseStatus: offlineResponse?.status(),
-  }));
+  console.info(
+    "ECHO_OFFLINE_DIAGNOSTIC",
+    JSON.stringify({
+      ...offlineInfo,
+      responseStatus: offlineResponse?.status(),
+    }),
+  );
   await expect(
     page.getByRole("heading", { name: "Make yourself heard." }),
   ).toBeVisible();
@@ -322,6 +446,20 @@ test("browser recording, playback, persistence and backup restore", async ({
   await expect(
     page.getByRole("button", { name: /Personal greeting/ }),
   ).toBeVisible();
+  await page
+    .getByLabel(
+      "I confirm the voice owner consented to preparing this local sample.",
+    )
+    .check();
+  await page.getByLabel("Import voice sample").setInputFiles({
+    name: "prepared-sample.wav",
+    mimeType: "audio/wav",
+    buffer: makeVoiceSampleWav(),
+  });
+  await expect(page.getByText(/Quality check passed/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /prepared-sample/ }),
+  ).toBeVisible();
   await page.getByRole("button", { name: /Personal greeting/ }).click();
   await expect(page.locator("audio")).toHaveAttribute("src", /^blob:/);
   await expect
@@ -359,12 +497,17 @@ test("browser recording, playback, persistence and backup restore", async ({
   await expect(
     page.getByRole("button", { name: /Personal greeting/ }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /prepared-sample/ }),
+  ).toBeVisible();
 });
 test("dark theme contrast and desktop layout", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("./");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Dark", exact: true }).click();
+  await page.getByLabel("High contrast").check();
+  await expect(page.locator("html")).toHaveAttribute("data-contrast", "high");
   for (const label of [
     "Home",
     "Communicate",
@@ -407,9 +550,11 @@ test("deep links, browser history and first-load offline assets", async ({
     await navigator.serviceWorker.ready;
   });
   // ready means an active worker exists, but it may not yet control the page.
-  await expect.poll(() => page.evaluate(
-    () => Boolean(navigator.serviceWorker.controller),
-  )).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() => Boolean(navigator.serviceWorker.controller)),
+    )
+    .toBe(true);
   logOfflineErrors(page);
   await context.setOffline(true);
   const offlineResponse = await page.reload();
@@ -419,44 +564,69 @@ test("deep links, browser history and first-load offline assets", async ({
     caches: await caches.keys(),
     cacheFiles: await (async () => {
       const names = await caches.keys();
-      const cached = names[0] && await caches.open(names[0]);
-      return cached ? (await cached.keys()).map((r) => new URL(r.url).pathname) : [];
+      const cached = names[0] && (await caches.open(names[0]));
+      return cached
+        ? (await cached.keys()).map((r) => new URL(r.url).pathname)
+        : [];
     })(),
     scripts: Array.from(document.scripts).map((script) => script.src),
     url: location.href,
   }));
-  console.info("ECHO_OFFLINE_DIAGNOSTIC", JSON.stringify({
-    ...offlineInfo,
-    responseStatus: offlineResponse?.status(),
-  }));
+  console.info(
+    "ECHO_OFFLINE_DIAGNOSTIC",
+    JSON.stringify({
+      ...offlineInfo,
+      responseStatus: offlineResponse?.status(),
+    }),
+  );
   await expect(
     page.getByRole("heading", { name: "Library", exact: true }),
   ).toBeVisible();
 });
 
-
-test("a first phrase can be saved after personal data has been cleared", async ({ page }) => {
+test("a first phrase can be saved after personal data has been cleared", async ({
+  page,
+}) => {
   await page.goto("./");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Delete all personal data" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Confirm", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Confirm", exact: true })
+    .click();
   await page.getByRole("button", { name: "Home", exact: true }).click();
-  await page.getByRole("button", { name: "New phrase", exact: true }).first().click();
+  await page
+    .getByRole("button", { name: "New phrase", exact: true })
+    .first()
+    .click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText(/General category will be created automatically/i)).toBeVisible();
-  await dialog.getByRole("textbox", { name: "Phrase", exact: true }).fill("A fresh start");
+  await expect(
+    dialog.getByText(/General category will be created automatically/i),
+  ).toBeVisible();
+  await dialog
+    .getByRole("textbox", { name: "Phrase", exact: true })
+    .fill("A fresh start");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByRole("button", { name: "Communicate", exact: true }).click();
-  await expect(page.getByRole("button", { name: "A fresh start", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "A fresh start", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Library", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Rename General" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Rename General" }),
+  ).toBeVisible();
 });
 
-test("mobile composer keeps voice selection and speaking controls easy to reach", async ({ page }) => {
+test("mobile composer keeps voice selection and speaking controls easy to reach", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 360, height: 780 });
   await page.goto("./");
   await expect(page.locator(".composer-shortcut")).toBeVisible();
   await expect(page.locator(".voice-chip")).toBeVisible();
   await expect(page.locator(".composer-actions .primary")).toBeVisible();
-  await expect(page.locator(".composer-actions .primary")).toHaveCSS("min-height", "46px");
+  await expect(page.locator(".composer-actions .primary")).toHaveCSS(
+    "min-height",
+    "46px",
+  );
 });
