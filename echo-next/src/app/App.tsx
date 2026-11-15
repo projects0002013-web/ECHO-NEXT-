@@ -2277,6 +2277,36 @@ export default function App() {
                     {t("Delete all personal data", "Удалить все личные данные")}
                   </button>
                 </section>
+                <section className="panel">
+                  <h2>{t("About the project", "О проекте")}</h2>
+                  <p>
+                    {t(
+                      "ECHO is an assistive and augmentative communication (AAC) app. It helps people communicate using phrases, picture cards and speech playback.",
+                      "ECHO — приложение альтернативной и дополнительной коммуникации (АДК). Оно помогает общаться с помощью фраз, карточек и озвучивания.",
+                    )}
+                  </p>
+                  <h3>{t("What you can do", "Возможности")}</h3>
+                  <ul>
+                    <li>{t("Create and organize personal communication cards.", "Создавать и упорядочивать собственные карточки для общения.")}</li>
+                    <li>{t("Build phrases and save favorites.", "Составлять фразы и сохранять избранное.")}</li>
+                    <li>{t("Use supported neural voices, including offline speech after model installation.", "Использовать поддерживаемые нейросетевые голоса, в том числе офлайн после установки модели.")}</li>
+                    <li>{t("Keep personal phrases and settings on your device and export backups.", "Хранить личные фразы и настройки на устройстве и экспортировать резервные копии.")}</li>
+                  </ul>
+                  <h3>{t("Our mission", "Наша миссия")}</h3>
+                  <p>
+                    {t(
+                      "We want to make everyday communication more accessible, personal and independent.",
+                      "Мы хотим сделать повседневное общение доступнее, удобнее и независимее.",
+                    )}
+                  </p>
+                  <p className="field-note">
+                    {t(
+                      "ECHO is a communication aid, not an emergency service or a replacement for professional support.",
+                      "ECHO — вспомогательное средство общения, а не экстренная служба и не замена профессиональной помощи.",
+                    )}
+                  </p>
+                  <p className="field-note">ECHO NEXT · Version 1.1.0</p>
+                </section>
               </div>
               <footer className="about">
                 <span className="brand-mark">
