@@ -227,6 +227,7 @@ test("phrase lifecycle, persistence, favorites, theme, language and backup", asy
     .getByRole("textbox", { name: "Phrase", exact: true })
     .fill("My test phrase");
   await dialog.getByLabel("Add to favorites").check();
+  await expect(dialog.getByLabel("Add to favorites")).toBeChecked();
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "My test phrase", exact: true }),
