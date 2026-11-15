@@ -2299,26 +2299,33 @@ export default function App() {
                       {t("About our project", "О нашем проекте")}
                     </summary>
                     <div style={{ paddingTop: "12px" }}>
-                      <p>{t(
-                        "ECHO is an AAC communication app that helps people express their needs and thoughts with phrase cards, text and speech.",
-                        "ECHO — AAC-приложение, которое помогает людям выражать свои мысли и потребности с помощью карточек, текста и голоса.",
+                      <p><strong>{t("Boss", "Босс")}:</strong> {s.language === "en" ? "Ari (surname unknown)" : "Ари (фамилию не знаю)"} <strong>{t("Assistant", "Помощник")}:</strong> {s.language === "en" ? "Ersa" : "Ерса"}</p>
+                      <p style={{ marginTop: "12px" }}>{t(
+                        "This project is for people with speech impairments. The idea is to make their lives easier. There are many similar apps and programs, but we aim to stand out through the variety of features.",
+                        "Это проект для людей с дефектами речи. Идея в том, чтобы облегчить им жизнь. Да, существует много похожих приложений и программ, но мы отличаемся разнообразием функций.",
                       )}</p>
-                      <p style={{ marginTop: "10px" }}>{t(
-                        "You can save favorite phrases, organize cards, create backups and use downloaded neural voices offline.",
-                        "Можно сохранять любимые фразы, организовывать карточки, создавать резервные копии и использовать скачанные нейросетевые голоса без интернета.",
+                      <p style={{ marginTop: "12px" }}>{t(
+                        "The app is designed around two operating modes — online and offline:",
+                        "В приложении будет два режима работы — онлайн и офлайн:",
                       )}</p>
-                      <p style={{ marginTop: "10px" }}>{t(
-                        "ECHO is designed to support everyday communication. Neural speech availability depends on the installed language model; personal voice cloning is not yet available.",
-                        "ECHO создан для повседневного общения. Нейросетевая озвучка зависит от установленной языковой модели; клонирование личного голоса пока недоступно.",
+                      <ol style={{ marginTop: "8px", paddingLeft: "22px" }}>
+                        <li><strong>{t("Offline mode (no internet).", "Офлайн-режим (без интернета).")}</strong> {t(
+                          "The concept includes more than 30 AI voice models, pleasant to listen to. You download the model you need, choose a voice and use it without a network connection. Currently, text-to-speech generation typically takes about 3–7 seconds in our tests.",
+                          "Внутри есть более 30 ИИ-моделей с голосами, которые приятно слушать. Вы просто скачиваете нужную модель, выбираете понравившийся голос и используете его без подключения к сети. (Примечание: сейчас обработка текста в звук в среднем занимает 3–7 секунд).",
+                        )}</li>
+                        <li style={{ marginTop: "10px" }}><strong>{t("Online mode (with internet).", "Онлайн-режим (с интернетом).")}</strong> {t(
+                          "You record your voice, grant permission to use it, and AI synthesizes a voice that sounds as similar as possible. This could let loved ones hear your familiar voice. The planned setup would require speaking only 5–10 words.",
+                          "Вы записываете свой голос, даете разрешение на его использование, и ИИ синтезирует максимально похожий голос на основе вашего. Так родные и близкие смогут слышать именно ваш привычный голос. Для настройки от вас потребуется сказать всего 5–10 слов.",
+                        )}</li>
+                      </ol>
+                      <p style={{ marginTop: "12px" }}>{t(
+                        "The app also has many other features that make communication easier.",
+                        "Кроме того, в приложении есть множество других функций, которые упрощают общение.",
                       )}</p>
-                      <a
-                        href="https://github.com/projects0002013-web/ECHO-NEXT-"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ display: "inline-block", marginTop: "10px" }}
-                      >
-                        {t("Project on GitHub", "Проект на GitHub")}
-                      </a>
+                      <p style={{ marginTop: "12px", opacity: 0.85 }}>{t(
+                        "Project vision: online personal voice synthesis is planned, not available in this release. The available local voices are presets/styles, not 30 independently installed AI models. Performance varies by device.",
+                        "Это описание идеи проекта: онлайн-синтез персонального голоса пока планируется и недоступен в этой версии. Доступные готовые голоса — это наборы голосов и стилей, а не 30 отдельно установленных ИИ-моделей. Скорость зависит от устройства.",
+                      )}</p>
                     </div>
                   </details>
                 </div>
