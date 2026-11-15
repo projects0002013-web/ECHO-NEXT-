@@ -20,15 +20,14 @@ test("ECHO brand logo and Kokoro voice selection render and persist", async ({ p
   await expect.poll(() => brandLogo.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const shortcuts = page.locator(".voice-engine-nav");
-  await expect(shortcuts.getByRole("button", { name: "System TTS" })).toBeVisible();
+  await expect(shortcuts.getByRole("button", { name: "System TTS" })).toHaveCount(0);
   await shortcuts.getByRole("button", { name: "Kokoro" }).click();
   await expect(page.locator("#kokoro-voice-engine")).toBeInViewport();
   await shortcuts.getByRole("button", { name: "Supertonic" }).click();
   await expect(page.locator("#supertonic-voice-engine")).toBeInViewport();
   await shortcuts.getByRole("button", { name: "My recordings" }).click();
   await expect(page.locator("#recorded-voice-panel")).toBeInViewport();
-  await shortcuts.getByRole("button", { name: "System TTS" }).click();
-  await expect(page.locator("#system-voice-engine")).toBeInViewport();
+  await expect(page.locator("#system-voice-engine")).toBeHidden();
   const panel = page.getByRole("region", { name: "Local AI speech synthesis" });
   await expect(panel.getByRole("heading", { name: "Find your voice" })).toBeVisible();
   await expect(panel.locator(".voice-choice")).toHaveCount(28);
@@ -50,14 +49,12 @@ test("ECHO brand logo and Kokoro voice selection render and persist", async ({ p
   await expect(page.getByRole("region", { name: "Local AI speech synthesis" }).locator(".voice-choice.selected .voice-choice-copy strong")).toHaveText("Emma");
 });
 
-test("system voice selection has a clear searchable choice interface", async ({ page }) => {
+test("system voice picker is hidden while the internal fallback remains available", async ({ page }) => {
   await page.goto("./");
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
-  const picker = page.locator(".system-voice-picker");
-  await expect(picker.getByRole("button", { name: /Device default/ })).toBeVisible();
-  await expect(picker.getByPlaceholder("Search by name or language")).toBeVisible();
-  await expect(picker.getByRole("button", { name: "Offline", exact: true })).toBeVisible();
-  await expect(picker.getByRole("button", { name: "Online", exact: true })).toBeVisible();
+  await expect(page.locator(".system-voice-picker")).toBeHidden();
+  await expect(page.locator("#system-voice-engine")).toBeHidden();
+  await expect(page.locator(".voice-engine-nav").getByRole("button", { name: "System TTS" })).toHaveCount(0);
 });
 
 test("Supertonic voice preferences survive a full app reload", async ({ page }) => {
@@ -71,7 +68,7 @@ test("Supertonic voice preferences survive a full app reload", async ({ page }) 
   const speedControl = panel.getByLabel("Speech speed");
   await speedControl.focus();
   for (let step = 0; step < 7; step++) await speedControl.press("ArrowRight");
-  await expect(panel.getByLabel("Speech speed")).toHaveValue("1.35");
+  await expect(panel.getByLabel("Speech speed")).toHaveValue("1.45");
   await page.reload();
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const restored = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
@@ -79,7 +76,7 @@ test("Supertonic voice preferences survive a full app reload", async ({ page }) 
   await expect(restored.getByLabel("Speech language")).toHaveValue("ru");
   await expect(restored.getByLabel("Quality steps")).toHaveValue("12");
   await expect(restored.getByLabel("Adaptive pacing")).not.toBeChecked();
-  await expect(restored.getByLabel("Speech speed")).toHaveValue("1.35");
+  await expect(restored.getByLabel("Speech speed")).toHaveValue("1.45");
 });
 
 test("partial Supertonic cache resumes only missing assets", async ({ page }) => {
@@ -113,7 +110,7 @@ test("cached Supertonic files are offered for reload after app restart", async (
   await page.getByRole("button", { name: "Voice Studio", exact: true }).click();
   const panel = page.getByRole("region", { name: "Supertonic 3 multilingual neural speech" });
   await expect(panel.getByText("Cached", { exact: true })).toBeVisible();
-  await expect(panel.getByRole("button", { name: "Load cached model" })).toBeEnabled();
+  await expect(panel.getByRole("button", { name: "Reload saved model" })).toBeEnabled();
 });
 
 test("phrase lifecycle, persistence, favorites, theme, language and backup", async ({

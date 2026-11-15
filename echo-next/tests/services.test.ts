@@ -51,7 +51,7 @@ it("recovers safely from invalid Supertonic preferences", () => {
     setItem: vi.fn(),
   });
   expect(loadSupertonicPreferences("ru")).toEqual({
-    voice: "F1", language: "ru", speed: 1, steps: 8, adaptive: true,
+    voice: "F1", language: "ru", speed: 1.1, steps: 5, adaptive: true,
   });
 });
 it("clamps corrupted Supertonic speed and ignores unknown voices", () => {
@@ -60,7 +60,7 @@ it("clamps corrupted Supertonic speed and ignores unknown voices", () => {
     setItem: vi.fn(),
   });
   expect(loadSupertonicPreferences()).toEqual({
-    voice: "F1", language: "en", speed: 1.8, steps: 8, adaptive: false,
+    voice: "F1", language: "en", speed: 1.8, steps: 5, adaptive: false,
   });
 });
 it("reports exactly which Supertonic assets survived an app restart", async () => {

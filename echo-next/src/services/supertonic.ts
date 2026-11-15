@@ -22,7 +22,7 @@ export type SupertonicPreferences = {
 const PREFERENCES_KEY = "echo-supertonic-preferences-v1";
 
 export function loadSupertonicPreferences(defaultLanguage: SupertonicLanguage = "en"): SupertonicPreferences {
-  const defaults: SupertonicPreferences = { voice: "F1", language: defaultLanguage, speed: 1, steps: 8, adaptive: true };
+  const defaults: SupertonicPreferences = { voice: "F1", language: defaultLanguage, speed: 1.1, steps: 5, adaptive: true };
   try {
     const raw = globalThis.localStorage?.getItem(PREFERENCES_KEY);
     if (!raw) return defaults;
@@ -60,6 +60,19 @@ type Runtime = {
 };
 let runtimePromise: Promise<Runtime> | undefined;
 let enginePromise: Promise<{ tts: any; runtime: Runtime }> | undefined;
+const voiceStylePromises = new Map<SupertonicVoice, Promise<any>>();
+
+function loadCachedVoiceStyle(runtime: Runtime, voice: SupertonicVoice): Promise<any> {
+  let pending = voiceStylePromises.get(voice);
+  if (!pending) {
+    pending = runtime.loadVoiceStyle([`${VOICE_DIR}/${voice}.json`]).catch((error: unknown) => {
+      voiceStylePromises.delete(voice);
+      throw error;
+    });
+    voiceStylePromises.set(voice, pending);
+  }
+  return pending;
+}
 
 async function getRuntime(): Promise<Runtime> {
   if (!runtimePromise) {
@@ -102,7 +115,7 @@ export async function loadSupertonic(
       }
       // Cache every small preset style during the explicit model install so
       // any selected voice remains available after the device goes offline.
-      await runtime.loadVoiceStyle(SUPERTONIC_VOICES.map((voice) => `${VOICE_DIR}/${voice}.json`));
+      await Promise.all(SUPERTONIC_VOICES.map((voice) => loadCachedVoiceStyle(runtime, voice)));
       const cacheStatus = await getSupertonicCacheStatus();
       if (!cacheStatus.complete) {
         throw new Error(
@@ -144,7 +157,7 @@ export async function synthesizeSupertonic(
   if (!SUPERTONIC_LANGUAGES.some(([code]) => code === language)) throw new Error("Unsupported Supertonic language.");
   if (!SUPERTONIC_VOICES.includes(voice)) throw new Error("Unknown Supertonic voice.");
   const { tts, runtime } = await loadSupertonic();
-  const style = await runtime.loadVoiceStyle([`${VOICE_DIR}/${voice}.json`]);
+  const style = await loadCachedVoiceStyle(runtime, voice);
   const effectiveSpeed = adaptiveSupertonicSpeed(clean, speed, adaptive);
   const { wav, duration } = await tts.call(clean, language, style, steps, effectiveSpeed, 0.3, onProgress);
   const samples = wav.slice(0, Math.floor(tts.sampleRate * duration[0]));
@@ -202,4 +215,5 @@ export async function removeSupertonicModel(): Promise<void> {
   if (typeof caches !== "undefined") await caches.delete("echo-supertonic-3-v1");
   enginePromise = undefined;
   runtimePromise = undefined;
+  voiceStylePromises.clear();
 }
