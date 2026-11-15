@@ -1,3 +1,4 @@
+import { prepareCloudflareWasm } from "./cloudflareWasm";
 import {
   ModelIntegrityError,
   verifyCachedResponse,
@@ -122,6 +123,7 @@ export async function loadLocalAI(
   if (!modelPromise) {
     modelPromise = import("kokoro-js")
       .then(async ({ KokoroTTS }) => {
+        await prepareCloudflareWasm();
         const { env } = await import("@huggingface/transformers");
         if (typeof caches === "undefined")
           throw new Error("Local model storage is unavailable.");
