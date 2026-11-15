@@ -164,6 +164,8 @@ export default function App() {
   const be: Record<string, string> = {
     "Voice engine shortcuts": "Хуткі пераход да галасавых рухавікоў",
     "System TTS": "Сістэмны голас",
+    "About our project": "Пра наш праект",
+    "Project on GitHub": "Праект на GitHub",
     "My recordings": "Мае запісы",
     General: "Агульнае",
     "Currently active": "Зараз выкарыстоўваецца",
@@ -2230,28 +2232,6 @@ export default function App() {
                   </div>
                 </section>
                 <section className="panel">
-                  <h2>{t("About ECHO", "О проекте ECHO")}</h2>
-                  <p>
-                    {t(
-                      "ECHO is an accessible AAC communication app that helps people express everyday needs and thoughts using phrase cards, text and speech.",
-                      "ECHO — доступное AAC-приложение, которое помогает людям выражать повседневные потребности и мысли с помощью карточек, текста и озвучивания.",
-                    )}
-                  </p>
-                  <div className="about-details">
-                    <p><strong>{t("What you can do", "Возможности")}</strong></p>
-                    <ul>
-                      <li>{t("Create, organize and favorite communication cards.", "Создавать, упорядочивать и добавлять в избранное карточки общения.")}</li>
-                      <li>{t("Build sentences and speak them aloud.", "Составлять предложения и озвучивать их.")}</li>
-                      <li>{t("Use locally stored neural voices when their models are installed.", "Использовать локальные нейросетевые голоса после установки моделей.")}</li>
-                      <li>{t("Keep personal phrases and settings on this device and export backups.", "Хранить личные фразы и настройки на устройстве и создавать резервные копии.")}</li>
-                    </ul>
-                    <p><strong>{t("Designed for communication", "Создано для общения")}</strong></p>
-                    <p>{t("ECHO supports accessible controls, multiple interface languages and offline use of downloaded voice models. Available speech languages depend on the installed model.", "ECHO поддерживает доступное управление, несколько языков интерфейса и офлайн-использование загруженных голосовых моделей. Доступные языки озвучивания зависят от установленной модели.")}</p>
-                    <p><strong>{t("Version", "Версия")}: 1.1.0</strong></p>
-                    <p>{t("ECHO does not replace professional communication or medical support. Features and voice availability may vary by device.", "ECHO не заменяет профессиональную помощь в коммуникации или медицинскую поддержку. Возможности и доступность голосов могут различаться в зависимости от устройства.")}</p>
-                  </div>
-                </section>
-                <section className="panel">
                   <h2>
                     <ShieldCheck size={20} />
                     {t("Privacy & your data", "Приватность и данные")}
@@ -2314,6 +2294,33 @@ export default function App() {
                       "Ваши слова. Ваш голос. Ваша независимость.",
                     )}
                   </p>
+                  <details className="about-project" style={{ marginTop: "12px", maxWidth: "680px" }}>
+                    <summary style={{ cursor: "pointer", color: "var(--accent, #36c9a4)", fontWeight: 600 }}>
+                      {t("About our project", "О нашем проекте")}
+                    </summary>
+                    <div style={{ paddingTop: "12px" }}>
+                      <p>{t(
+                        "ECHO is an AAC communication app that helps people express their needs and thoughts with phrase cards, text and speech.",
+                        "ECHO — AAC-приложение, которое помогает людям выражать свои мысли и потребности с помощью карточек, текста и голоса.",
+                      )}</p>
+                      <p style={{ marginTop: "10px" }}>{t(
+                        "You can save favorite phrases, organize cards, create backups and use downloaded neural voices offline.",
+                        "Можно сохранять любимые фразы, организовывать карточки, создавать резервные копии и использовать скачанные нейросетевые голоса без интернета.",
+                      )}</p>
+                      <p style={{ marginTop: "10px" }}>{t(
+                        "ECHO is designed to support everyday communication. Neural speech availability depends on the installed language model; personal voice cloning is not yet available.",
+                        "ECHO создан для повседневного общения. Нейросетевая озвучка зависит от установленной языковой модели; клонирование личного голоса пока недоступно.",
+                      )}</p>
+                      <a
+                        href="https://github.com/projects0002013-web/ECHO-NEXT-"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: "inline-block", marginTop: "10px" }}
+                      >
+                        {t("Project on GitHub", "Проект на GitHub")}
+                      </a>
+                    </div>
+                  </details>
                 </div>
               </footer>
             </>
