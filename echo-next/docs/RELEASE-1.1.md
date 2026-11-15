@@ -11,6 +11,10 @@ This release candidate is prepared on `feature/echo-next-1.1-voice-engine`. It k
 - Keeps the device/system voice out of the primary Voice Studio picker. It remains an explicitly selected emergency accessibility option in Settings; automatic/neural mode no longer silently falls back to it.
 - Keeps Fast (5 steps) as the default. Balanced uses 8 and Quality uses 12. ECHO stores only timings from completed, real generations on the current device and presents averages only after observations exist.
 - Cancels superseded generation, serializes ONNX work, reuses voice styles, chunks long input and releases all four Supertonic inference sessions when Voice Studio is closed.
+- Releases partially created Supertonic sessions before a WebGPU-to-WASM retry, rejects header-only/empty generated WAV output, and cancels or discards stale Kokoro results before playback.
+- Adds consent-gated local audio import and a real decoded-audio quality gate for future personal-voice samples. It checks duration, silence and clipping without uploading the sample or claiming cloning support.
+- Adds a persistent high-contrast accessibility preference without changing the IndexedDB schema version; older saved settings default safely to off.
+- Updates GitHub Actions to current official Node 24 majors after the first successful PR run exposed deprecation warnings.
 - Updates npm and Android versions to 1.1.0 (`versionCode 4`).
 
 ## Performance evidence
@@ -25,12 +29,12 @@ Routing, locale handling, long-input chunk bounds, cancellation and preference r
 
 ## Belarusian model assessment
 
-| Candidate | Belarusian | Download/size evidence | Local Android ARM64 fit | License evidence | Decision |
-|---|---:|---|---|---|---|
-| OmniVoice via `YauhenBichel/belarusian-tts` | Yes | Project reports about 1.2 GB | Python/PyTorch server; project reports about 60 s to create 2 s on a 16-thread CPU. No browser/Android adapter | Repository code is Apache-2.0; its FLEURS reference is CC-BY-4.0. Model redistribution still needs release review | Real language support, but too large and slow for this APK |
-| Piper (`piper1-gpl`) | No released Belarusian checkpoint found | N/A: there is no candidate Belarusian model to size | Native/ONNX architecture is promising for ARM64 after a voice is trained | Engine is GPL-3.0; every future voice also needs its model-card/data license review | Best future compact architecture, not an integration today |
-| XTTS-v2 / Coqui TTS | No; its published list has 16 languages including Russian, not Belarusian | No Belarusian model, so no applicable size | Python/PyTorch stack, not the current browser/WebView runtime | Coqui code and model terms require separate review; XTTS weights use the Coqui Public Model License | Rejected for Belarusian and current runtime |
-| Meta MMS / fairseq | No `mms-tts-bel` checkpoint found | N/A | A hypothetical exported checkpoint would still need an Android runtime and benchmark | fairseq code is MIT; checkpoint/data terms would be model-specific | ASR/alignment language coverage must not be mistaken for Belarusian TTS |
+| Candidate                                   |                                                                Belarusian | Download/size evidence                              | Local Android ARM64 fit                                                                                        | License evidence                                                                                                  | Decision                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------------: | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| OmniVoice via `YauhenBichel/belarusian-tts` |                                                                       Yes | Project reports about 1.2 GB                        | Python/PyTorch server; project reports about 60 s to create 2 s on a 16-thread CPU. No browser/Android adapter | Repository code is Apache-2.0; its FLEURS reference is CC-BY-4.0. Model redistribution still needs release review | Real language support, but too large and slow for this APK              |
+| Piper (`piper1-gpl`)                        |                                   No released Belarusian checkpoint found | N/A: there is no candidate Belarusian model to size | Native/ONNX architecture is promising for ARM64 after a voice is trained                                       | Engine is GPL-3.0; every future voice also needs its model-card/data license review                               | Best future compact architecture, not an integration today              |
+| XTTS-v2 / Coqui TTS                         | No; its published list has 16 languages including Russian, not Belarusian | No Belarusian model, so no applicable size          | Python/PyTorch stack, not the current browser/WebView runtime                                                  | Coqui code and model terms require separate review; XTTS weights use the Coqui Public Model License               | Rejected for Belarusian and current runtime                             |
+| Meta MMS / fairseq                          |                                         No `mms-tts-bel` checkpoint found | N/A                                                 | A hypothetical exported checkpoint would still need an Android runtime and benchmark                           | fairseq code is MIT; checkpoint/data terms would be model-specific                                                | ASR/alignment language coverage must not be mistaken for Belarusian TTS |
 
 No candidate meets all requirements today. ECHO keeps `be-BY` as an explicit emergency device-voice route and gives a clear unavailable-neural warning. It does not label Russian audio as Belarusian.
 
@@ -52,4 +56,4 @@ OmniVoice and XTTS are currently too large and runtime-incompatible for a credib
 - Supertonic's pinned weights are about 398 MiB plus voice styles and temporary working memory; the upstream repository is archived.
 - No physical Android phone, audible neural output, TalkBack session, Bluetooth/audio focus, thermal behavior or OEM WebView was available in this validation environment.
 - The APK is debug-signed for testing, not a production/store build.
-
+- A complete Kazakh interface, custom phrase images, an SOS workflow and undo-after-delete are not implemented in 1.1. Existing RU/EN/BE AAC data and features remain intact; these items must be designed as separate schema-compatible features rather than implied by the voice-engine release.

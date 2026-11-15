@@ -27,7 +27,9 @@ Automated CI covers input validation, TypeScript, the browser UI and existing AA
 
 ## Future: personal voice synthesis
 
-`src/services/ai.ts` defines the contract for a future consent-based personal voice provider. The proposed local capture/import, quality gate, consent record, derived-profile storage and deletion lifecycle is documented in [the 1.1 release notes](RELEASE-1.1.md). To clone a personal voice, a real verified model and explicit authorization from the speaker are necessary. Never upload someone's recording without permission. Cloud voice services require a protected backend and must never embed secret API keys in this web app. Personal voice cloning is **not implemented**.
+Voice Studio can record ordinary clips or import a potential owner sample after explicit consent. Import is processed locally and rejected when it is under 3 seconds, over 60 seconds, silent/too quiet, clipped, undecodable or over 10 MB. Accepted samples remain ordinary local recordings and are included in the app's plain JSON backup; they are **not** presented as cloned voices.
+
+`src/services/ai.ts` defines the contract for a future consent-based personal voice provider, while `src/services/voiceSample.ts` owns the model-independent quality gate. The proposed derived-profile storage, selection and deletion lifecycle is documented in [the 1.1 release notes](RELEASE-1.1.md). To clone a personal voice, a real verified model and explicit authorization from the speaker are necessary. Never upload someone's recording without permission. Cloud voice services require a protected backend and must never embed secret API keys in this web app. Personal voice cloning is **not implemented**.
 
 ## Previously investigated Android candidates
 
