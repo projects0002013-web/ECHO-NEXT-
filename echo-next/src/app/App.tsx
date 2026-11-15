@@ -2299,33 +2299,44 @@ export default function App() {
                       {t("About our project", "О нашем проекте")}
                     </summary>
                     <div style={{ paddingTop: "12px" }}>
-                      <p><strong>{t("Boss", "Босс")}:</strong> {s.language === "en" ? "Ari (surname unknown)" : "Ари (фамилию не знаю)"} <strong>{t("Assistant", "Помощник")}:</strong> {s.language === "en" ? "Ersa" : "Ерса"}</p>
+                      <p><strong>{t("Boss", "Босс")}:</strong> Ари ({t("surname unknown", "фамилию не знаю")})</p>
+                      <p><strong>{t("Assistant", "Помощник")}:</strong> Ерса</p>
                       <p style={{ marginTop: "12px" }}>{t(
-                        "This project is for people with speech impairments. The idea is to make their lives easier. There are many similar apps and programs, but we aim to stand out through the variety of features.",
+                        "This is a project for people with speech difficulties. The idea is to make everyday communication easier. Many similar applications exist, but we aim to stand out through a wide variety of features.",
                         "Это проект для людей с дефектами речи. Идея в том, чтобы облегчить им жизнь. Да, существует много похожих приложений и программ, но мы отличаемся разнообразием функций.",
                       )}</p>
                       <p style={{ marginTop: "12px" }}>{t(
-                        "The app is designed around two operating modes — online and offline:",
-                        "В приложении будет два режима работы — онлайн и офлайн:",
+                        "The project includes an offline voice mode and plans for a personalized online voice mode:",
+                        "В приложении предусмотрен офлайн-режим, а также планируется персонализированный онлайн-режим:",
                       )}</p>
-                      <ol style={{ marginTop: "8px", paddingLeft: "22px" }}>
-                        <li><strong>{t("Offline mode (no internet).", "Офлайн-режим (без интернета).")}</strong> {t(
-                          "The concept includes more than 30 AI voice models, pleasant to listen to. You download the model you need, choose a voice and use it without a network connection. Currently, text-to-speech generation typically takes about 3–7 seconds in our tests.",
-                          "Внутри есть более 30 ИИ-моделей с голосами, которые приятно слушать. Вы просто скачиваете нужную модель, выбираете понравившийся голос и используете его без подключения к сети. (Примечание: сейчас обработка текста в звук в среднем занимает 3–7 секунд).",
-                        )}</li>
-                        <li style={{ marginTop: "10px" }}><strong>{t("Online mode (with internet).", "Онлайн-режим (с интернетом).")}</strong> {t(
-                          "You record your voice, grant permission to use it, and AI synthesizes a voice that sounds as similar as possible. This could let loved ones hear your familiar voice. The planned setup would require speaking only 5–10 words.",
-                          "Вы записываете свой голос, даете разрешение на его использование, и ИИ синтезирует максимально похожий голос на основе вашего. Так родные и близкие смогут слышать именно ваш привычный голос. Для настройки от вас потребуется сказать всего 5–10 слов.",
-                        )}</li>
+                      <ol style={{ marginTop: "8px", paddingInlineStart: "24px" }}>
+                        <li>
+                          <strong>{t("Offline mode (no internet)", "Офлайн-режим (без интернета)")}</strong>
+                          <p>{t(
+                            "ECHO offers more than 30 voice presets across installed AI voice engines (not 30 separate models). Download the necessary model once, choose a voice and use it without a network connection. During our testing, generating speech took about 3–7 seconds; speed depends on the device and phrase length.",
+                            "В ECHO доступно более 30 вариантов ИИ-голосов в нескольких голосовых движках (это не 30 отдельных моделей). Вы один раз скачиваете нужную модель, выбираете понравившийся голос и используете его без подключения к сети. Во время наших тестов обработка текста в звук занимала примерно 3–7 секунд; скорость зависит от устройства и длины фразы.",
+                          )}</p>
+                        </li>
+                        <li style={{ marginTop: "12px" }}>
+                          <strong>{t("Online mode — planned", "Онлайн-режим — в разработке")}</strong>
+                          <p>{t(
+                            "Our goal is to let users record a voice sample, give explicit permission to use it, and generate speech resembling their own voice so loved ones can hear a familiar voice. We hope to make setup possible with just 5–10 spoken words, but the quality and feasibility of this feature have not yet been confirmed. Personalized voice synthesis is not available in this release.",
+                            "В будущем вы сможете записать свой голос, дать разрешение на его использование, а ИИ будет синтезировать максимально похожий голос. Так родные и близкие смогут слышать именно ваш привычный голос. Мы хотим, чтобы для настройки хватало всего 5–10 слов, но эта возможность и качество результата ещё не подтверждены. В текущей версии персональный синтез голоса пока недоступен.",
+                          )}</p>
+                        </li>
                       </ol>
                       <p style={{ marginTop: "12px" }}>{t(
-                        "The app also has many other features that make communication easier.",
+                        "The app also has other features designed to make communication easier.",
                         "Кроме того, в приложении есть множество других функций, которые упрощают общение.",
                       )}</p>
-                      <p style={{ marginTop: "12px", opacity: 0.85 }}>{t(
-                        "Project vision: online personal voice synthesis is planned, not available in this release. The available local voices are presets/styles, not 30 independently installed AI models. Performance varies by device.",
-                        "Это описание идеи проекта: онлайн-синтез персонального голоса пока планируется и недоступен в этой версии. Доступные готовые голоса — это наборы голосов и стилей, а не 30 отдельно установленных ИИ-моделей. Скорость зависит от устройства.",
-                      )}</p>
+                      <a
+                        href="https://github.com/projects0002013-web/ECHO-NEXT-"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: "inline-block", marginTop: "12px" }}
+                      >
+                        {t("Project on GitHub", "Проект на GitHub")}
+                      </a>
                     </div>
                   </details>
                 </div>
