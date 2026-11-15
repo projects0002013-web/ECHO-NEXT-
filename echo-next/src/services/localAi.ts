@@ -1,4 +1,5 @@
 import {
+  ModelIntegrityError,
   verifyCachedResponse,
   storeVerifiedResponse,
   verifiedModelCache,
@@ -187,8 +188,13 @@ export async function ensureKokoroVoice(
   const cache = await caches.open("kokoro-voices");
   const cached = await cache.match(key);
   if (cached) {
-    await verifyCachedResponse(cache, key, cached);
-    return;
+    try {
+      await verifyCachedResponse(cache, key, cached);
+      return;
+    } catch (error) {
+      if (localOnly || !(error instanceof ModelIntegrityError)) throw error;
+      await cache.delete(key);
+    }
   }
   if (localOnly)
     throw new Error(

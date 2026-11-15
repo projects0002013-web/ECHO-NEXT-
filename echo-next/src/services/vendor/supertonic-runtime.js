@@ -1,4 +1,4 @@
-import { verifyCachedResponse, storeVerifiedResponse } from "../modelIntegrity";
+import { ModelIntegrityError, verifyCachedResponse, storeVerifiedResponse } from "../modelIntegrity";
 import * as ort from 'onnxruntime-web';
 
 // Adapted from Supertone's archived Supertonic web example.
@@ -13,7 +13,14 @@ async function fetchCached(input, init) {
   }
   const cache = await caches.open(SUPER_CACHE);
   const cached = await cache.match(url);
-  if (cached?.ok) return verifyCachedResponse(cache, url, cached);
+  if (cached?.ok) {
+    try {
+      return await verifyCachedResponse(cache, url, cached);
+    } catch (error) {
+      if (modelAccess.localOnly || !(error instanceof ModelIntegrityError)) throw error;
+      await cache.delete(url);
+    }
+  }
   if (modelAccess.localOnly) throw new Error("Saved model files are missing. Choose Load model to download them explicitly.");
   if (cached) await cache.delete(url);
 

@@ -17,7 +17,10 @@ function memoryCache() {
       async put(key: RequestInfo | URL, value: Response) {
         values.set(String(key), value.clone());
       },
-    } as Pick<Cache, "match" | "put"> as Cache,
+      async delete(key: RequestInfo | URL) {
+        return values.delete(String(key));
+      },
+    } as Pick<Cache, "match" | "put" | "delete"> as Cache,
   };
 }
 
@@ -75,5 +78,19 @@ describe("offline model cache integrity", () => {
     ).toBeUndefined();
     const cached = await guarded.match("https://models.example/weights.onnx");
     expect(await cached?.text()).toBe("cached weights");
+  });
+
+  it("removes only a corrupted online asset so the loader can repair it", async () => {
+    const { cache, values } = memoryCache();
+    const key = "https://models.example/weights.onnx";
+    await storeVerifiedResponse(cache, key, new Response("original"));
+    const digest = values.get(key)!.headers.get("x-echo-sha256")!;
+    values.set(
+      key,
+      new Response("corrupted", { headers: { "x-echo-sha256": digest } }),
+    );
+    const repairable = verifiedModelCache(cache, false, () => undefined);
+    expect(await repairable.match(key)).toBeUndefined();
+    expect(values.has(key)).toBe(false);
   });
 });

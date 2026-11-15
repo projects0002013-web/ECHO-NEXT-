@@ -1,6 +1,13 @@
 /** Detects local corruption, not authenticity. Legacy caches are baselined without deleting them. */
 const HEADER = "x-echo-sha256";
 
+export class ModelIntegrityError extends Error {
+  constructor() {
+    super("Local model integrity check failed. Repair the model while online.");
+    this.name = "ModelIntegrityError";
+  }
+}
+
 export async function digestResponse(response: Response): Promise<string> {
   const bytes = await response.clone().arrayBuffer();
   const hash = await crypto.subtle.digest("SHA-256", bytes);
@@ -17,9 +24,7 @@ export async function verifyCachedResponse(
   const actual = await digestResponse(response);
   const expected = response.headers.get(HEADER);
   if (expected && expected !== actual) {
-    throw new Error(
-      "Local model integrity check failed. Remove and reinstall this model.",
-    );
+    throw new ModelIntegrityError();
   }
   if (!expected) await storeVerifiedResponse(cache, key, response, actual);
   return response;
@@ -60,7 +65,17 @@ export function verifiedModelCache(
     async match(key: RequestInfo | URL) {
       try {
         const response = await cache.match(key);
-        if (response) return await verifyCachedResponse(cache, key, response);
+        if (response) {
+          try {
+            return await verifyCachedResponse(cache, key, response);
+          } catch (error) {
+            if (error instanceof ModelIntegrityError && !localOnly) {
+              await cache.delete(key);
+              return undefined;
+            }
+            throw error;
+          }
+        }
         // Transformers probes a local-path key before the canonical remote
         // URL. Let that probe miss so the cached URL key can still be found.
         if (localOnly && /^https?:\/\//u.test(String(key)))
