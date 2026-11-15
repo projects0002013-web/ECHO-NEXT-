@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Play, Search, Sparkles, Volume2, X } from "lucide-react";
-import { AI_VOICES, loadLocalAIPreferences, saveLocalAIPreferences, loadLocalAI, synthesizeLocalAI, type AIVoice } from "../services/localAi";
+import { AI_VOICES, hasLocalAIInstallConsent, loadLocalAIPreferences, saveLocalAIPreferences, loadLocalAI, synthesizeLocalAI, type AIVoice } from "../services/localAi";
 
 type UILanguage = "en" | "ru" | "be";
 export default function LocalAiVoicePanel({ language }: { language: UILanguage }) {
