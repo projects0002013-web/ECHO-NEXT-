@@ -164,6 +164,8 @@ export default function App() {
   const be: Record<string, string> = {
     "Voice engine shortcuts": "Хуткі пераход да галасавых рухавікоў",
     "System TTS": "Сістэмны голас",
+    "About our project": "Пра наш праект",
+    "Project on GitHub": "Праект на GitHub",
     "My recordings": "Мае запісы",
     General: "Агульнае",
     "Currently active": "Зараз выкарыстоўваецца",
@@ -2292,6 +2294,49 @@ export default function App() {
                       "Ваши слова. Ваш голос. Ваша независимость.",
                     )}
                   </p>
+                  <details className="about-project" style={{ marginTop: "12px", maxWidth: "680px" }}>
+                    <summary style={{ cursor: "pointer", color: "var(--accent, #36c9a4)", fontWeight: 600 }}>
+                      {t("About our project", "О нашем проекте")}
+                    </summary>
+                    <div style={{ paddingTop: "12px" }}>
+                      <p><strong>{t("Boss: Ari (surname not provided)", "Босс: Ари (фамилию не знаю)")}</strong></p>
+                      <p><strong>{t("Assistant: Ersa", "Помощник: Ерса")}</strong></p>
+                      <p style={{ marginTop: "12px" }}>{t(
+                        "This project is for people with speech difficulties. Our idea is to make everyday life and communication easier. Many similar apps already exist, but ECHO aims to stand out through its range of features.",
+                        "Это проект для людей с дефектами речи. Идея в том, чтобы облегчить им жизнь. Да, существует много похожих приложений и программ, но мы отличаемся разнообразием функций.",
+                      )}</p>
+                      <p style={{ marginTop: "12px" }}><strong>{t(
+                        "ECHO is designed around two ways of using voice:",
+                        "В приложении предусмотрены два режима работы с голосом:",
+                      )}</strong></p>
+                      <p style={{ marginTop: "10px" }}><strong>{t(
+                        "1. Offline mode (without internet).",
+                        "1. Офлайн-режим (без интернета).",
+                      )}</strong> {t(
+                        "ECHO provides more than 30 available voice options across its local neural voice engines, not 30 separate AI models. Download the model once, choose a voice and use it offline. On a tested device, speech generation took approximately 3–7 seconds, but speed depends on the device and phrase length.",
+                        "В ECHO доступно более 30 вариантов нейросетевых голосов, а не 30 отдельных ИИ-моделей. Достаточно один раз скачать нужную модель, выбрать голос и пользоваться им без интернета. На протестированном устройстве синтез занимал примерно 3–7 секунд, но скорость зависит от устройства и длины фразы.",
+                      )}</p>
+                      <p style={{ marginTop: "10px" }}><strong>{t(
+                        "2. Online mode (planned).",
+                        "2. Онлайн-режим (в планах).",
+                      )}</strong> {t(
+                        "Our goal is to let a person record their own voice, give explicit permission to use it, and have AI synthesize a similar voice so loved ones can hear something familiar. We hope to make setup possible from a short recording. This feature is not yet implemented, and a 5–10 word sample is not a verified requirement.",
+                        "Мы хотим, чтобы человек мог записать свой голос, дать разрешение на его использование, а ИИ создал похожую озвучку. Так родные и близкие смогут слышать привычный голос. В будущем мы хотим упростить настройку до короткого образца, возможно 5–10 слов. Сейчас эта функция ещё не реализована, а достаточность такого образца не подтверждена.",
+                      )}</p>
+                      <p style={{ marginTop: "12px" }}>{t(
+                        "The app also includes many other tools designed to make communication simpler.",
+                        "Кроме того, в приложении есть множество других функций, которые упрощают общение.",
+                      )}</p>
+                      <a
+                        href="https://github.com/projects0002013-web/ECHO-NEXT-"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: "inline-block", marginTop: "12px" }}
+                      >
+                        {t("Project on GitHub", "Проект на GitHub")}
+                      </a>
+                    </div>
+                  </details>
                 </div>
               </footer>
             </>
