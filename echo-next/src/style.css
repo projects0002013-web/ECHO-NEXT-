@@ -30,6 +30,31 @@
   --hover: #232734;
   color-scheme: dark;
 }
+:root[data-contrast="high"] {
+  --text: #000;
+  --muted: #303030;
+  --line: #303030;
+  --accent: #004d3f;
+  --tint: #d7fff4;
+  --hover: #e8e8e8;
+}
+:root[data-theme="dark"][data-contrast="high"] {
+  --bg: #000;
+  --surface: #090909;
+  --text: #fff;
+  --muted: #e0e0e0;
+  --line: #d0d0d0;
+  --accent: #5fffd4;
+  --tint: #003d32;
+  --hover: #202020;
+}
+:root[data-contrast="high"] button:focus-visible,
+:root[data-contrast="high"] a:focus-visible,
+:root[data-contrast="high"] input:focus-visible,
+:root[data-contrast="high"] textarea:focus-visible,
+:root[data-contrast="high"] select:focus-visible {
+  outline-width: 4px;
+}
 * {
   box-sizing: border-box;
 }

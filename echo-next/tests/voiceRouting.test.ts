@@ -12,101 +12,145 @@ const base = {
 
 describe("resolveVoiceRoute", () => {
   it("uses online speech only when connection and provider are both available", () => {
-    expect(resolveVoiceRoute({
-      ...base,
-      isOnline: true,
-      onlineProviderConfigured: true,
-    })).toMatchObject({ mode: "online", engine: "online", reason: "online-ready" });
+    expect(
+      resolveVoiceRoute({
+        ...base,
+        isOnline: true,
+        onlineProviderConfigured: true,
+      }),
+    ).toMatchObject({
+      mode: "online",
+      engine: "online",
+      reason: "online-ready",
+    });
   });
 
   it("keeps online speech disabled in offline-neural mode even when a provider exists", () => {
-    expect(resolveVoiceRoute({
-      ...base,
-      isOnline: true,
-      onlineProviderConfigured: true,
-      modePreference: "neural",
-    })).toMatchObject({ mode: "offline", engine: "kokoro" });
+    expect(
+      resolveVoiceRoute({
+        ...base,
+        isOnline: true,
+        onlineProviderConfigured: true,
+        modePreference: "neural",
+      }),
+    ).toMatchObject({ mode: "offline", engine: "kokoro" });
   });
 
   it("keeps online speech disabled in system-only mode", () => {
-    expect(resolveVoiceRoute({
-      ...base,
-      isOnline: true,
-      onlineProviderConfigured: true,
-      modePreference: "system",
-      preferredOfflineEngine: "system",
-    })).toMatchObject({ mode: "offline", engine: "system" });
+    expect(
+      resolveVoiceRoute({
+        ...base,
+        isOnline: true,
+        onlineProviderConfigured: true,
+        modePreference: "system",
+        preferredOfflineEngine: "system",
+      }),
+    ).toMatchObject({ mode: "offline", engine: "system" });
   });
 
   it("never selects an unconfigured online provider", () => {
-    expect(resolveVoiceRoute({
-      ...base,
-      isOnline: true,
-      onlineProviderConfigured: false,
-    })).toMatchObject({ mode: "offline", engine: "kokoro" });
+    expect(
+      resolveVoiceRoute({
+        ...base,
+        isOnline: true,
+        onlineProviderConfigured: false,
+      }),
+    ).toMatchObject({ mode: "offline", engine: "kokoro" });
   });
 
   it("uses installed Kokoro for English by default", () => {
     expect(resolveVoiceRoute(base)).toMatchObject({
-      mode: "offline", engine: "kokoro", requiresModelDownload: false,
+      mode: "offline",
+      engine: "kokoro",
+      requiresModelDownload: false,
     });
   });
 
   it("falls back to system speech when no English neural model is installed", () => {
-    expect(resolveVoiceRoute({
-      ...base,
-      kokoroInstalled: false,
-      supertonicInstalled: false,
-    })).toMatchObject({
-      mode: "offline", engine: "system", requiresModelDownload: true,
+    expect(
+      resolveVoiceRoute({
+        ...base,
+        kokoroInstalled: false,
+        supertonicInstalled: false,
+      }),
+    ).toMatchObject({
+      mode: "offline",
+      engine: "system",
+      requiresModelDownload: true,
       recommendedDownload: "kokoro",
     });
   });
 
   it("uses installed Supertonic for Russian", () => {
     expect(resolveVoiceRoute({ ...base, language: "ru-RU" })).toMatchObject({
-      mode: "offline", engine: "supertonic",
+      mode: "offline",
+      engine: "supertonic",
     });
   });
 
   it("falls back to system speech for Russian when Supertonic is not installed", () => {
-    expect(resolveVoiceRoute({
-      ...base, language: "ru-RU", supertonicInstalled: false,
-    })).toMatchObject({
-      mode: "offline", engine: "system", requiresModelDownload: true, recommendedDownload: "supertonic",
+    expect(
+      resolveVoiceRoute({
+        ...base,
+        language: "ru-RU",
+        supertonicInstalled: false,
+      }),
+    ).toMatchObject({
+      mode: "offline",
+      engine: "system",
+      requiresModelDownload: true,
+      recommendedDownload: "supertonic",
     });
   });
 
   it("uses system speech for Kazakh rather than claiming neural support", () => {
     expect(resolveVoiceRoute({ ...base, language: "kk-KZ" })).toMatchObject({
-      mode: "offline", engine: "system", reason: "offline-language-fallback",
+      mode: "offline",
+      engine: "system",
+      reason: "offline-language-fallback",
     });
   });
 
+  it("never substitutes Russian neural speech for Belarusian", () => {
+    const route = resolveVoiceRoute({ ...base, language: "be-BY" });
+    expect(route).toMatchObject({
+      mode: "offline",
+      engine: "system",
+      reason: "offline-language-fallback",
+    });
+    expect(route.recommendedDownload).toBeUndefined();
+  });
+
   it("honors an installed offline preference", () => {
-    expect(resolveVoiceRoute({
-      ...base,
-      language: "en",
-      preferredOfflineEngine: "supertonic",
-    })).toMatchObject({ mode: "offline", engine: "supertonic" });
+    expect(
+      resolveVoiceRoute({
+        ...base,
+        language: "en",
+        preferredOfflineEngine: "supertonic",
+      }),
+    ).toMatchObject({ mode: "offline", engine: "supertonic" });
   });
 
   it("falls back to Kokoro if preferred Supertonic is not installed for English", () => {
-    expect(resolveVoiceRoute({
-      ...base,
-      language: "en",
-      preferredOfflineEngine: "supertonic",
-      supertonicInstalled: false,
-      kokoroInstalled: true,
-    })).toMatchObject({ mode: "offline", engine: "kokoro" });
+    expect(
+      resolveVoiceRoute({
+        ...base,
+        language: "en",
+        preferredOfflineEngine: "supertonic",
+        supertonicInstalled: false,
+        kokoroInstalled: true,
+      }),
+    ).toMatchObject({ mode: "offline", engine: "kokoro" });
   });
 
   it("respects system-only mode even if the device reports no matching voice", () => {
-    expect(resolveVoiceRoute({
-      ...base,
-      preferredOfflineEngine: "system",
-      systemVoiceAvailable: false,
-    })).toMatchObject({ mode: "offline", engine: "system" });
+    expect(
+      resolveVoiceRoute({
+        ...base,
+        preferredOfflineEngine: "system",
+        systemVoiceAvailable: false,
+      }),
+    ).toMatchObject({ mode: "offline", engine: "system" });
   });
 
   it("normalizes language tags with underscores", () => {

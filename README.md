@@ -3,7 +3,7 @@ Modern AAC communication app with AI voice
 
 The complete application lives in [`echo-next/`](echo-next/). Existing implementation and history are preserved.
 
-ECHO is a local-first augmentative and alternative communication (AAC) app for browsers and Android, built with React, TypeScript, Vite, Tailwind CSS, IndexedDB and Capacitor. It includes five responsive screens, editable phrases and categories, favorites, history, system speech, voice recordings, backups, English/Russian UI, themes and accessibility preferences. It runs in a browser without Android.
+ECHO is a local-first augmentative and alternative communication (AAC) app for browsers and Android, built with React, TypeScript, Vite, Tailwind CSS, IndexedDB and Capacitor. It includes five responsive screens, editable phrases and categories, favorites, history, system speech, voice recordings, backups, English/Russian/Belarusian UI, optional offline neural voices, themes and accessibility preferences. It runs in a browser without Android.
 
 ## Install and develop
 
@@ -53,6 +53,6 @@ The APK is a debug build for testing, not a signed store release. Release signin
 
 The CI workflow checks TypeScript, unit tests, browser scenarios and production builds for both `/` and `/ECHO-NEXT-/`, plus Android build and lint. Browser tests use synthetic microphone input and include light/dark accessibility, persistence, backup restore, offline loading and route history.
 
-AI personalized voice synthesis is **not configured or implemented**. Recorded clips are ordinary playback, and system TTS remains independent. No samples are automatically uploaded. See [AI assessment](echo-next/docs/AI-VOICE.md). Physical Android recording, audible TTS, audio routing, lifecycle and TalkBack still require device testing. iOS, cloud sync and release signing are not included.
+Personalized voice cloning is **not configured or implemented**. Recorded clips are ordinary playback, and system TTS remains independent. Kokoro generates English locally after an explicit model download. Supertonic 3 optionally generates its 31 published languages, including Russian, but does not support Belarusian. No samples are automatically uploaded. See [AI assessment](echo-next/docs/ADDITIONAL-TTS-MODELS.md). Physical Android recording, audible TTS, neural inference, audio routing, lifecycle and TalkBack still require device testing. iOS, cloud sync and release signing are not included.
 
 See [application architecture and features](echo-next/README.md) and [original local validation report](echo-next/docs/VALIDATION.md). That report describes the initial implementation, not a verified GitHub Actions deployment.

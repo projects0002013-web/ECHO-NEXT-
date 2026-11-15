@@ -62,9 +62,16 @@ import {
   type Phrase,
   type Clip,
 } from "../database/store";
-import { speech, type Voice } from "../services/speech";
+import {
+  NeuralVoiceUnavailableError,
+  speech,
+  type Voice,
+} from "../services/speech";
+import { hasLocalAIInstallConsent } from "../services/localAi";
+import { isSupertonicModelCached } from "../services/supertonic";
 import { VoiceRecorder } from "../services/recorder";
 import { adaptiveSpeechSettings } from "../services/adaptiveSpeech";
+import { inspectVoiceSample } from "../services/voiceSample";
 import LocalAiVoicePanel from "./LocalAiVoicePanel";
 import SupertonicVoicePanel from "./SupertonicVoicePanel";
 type Page = "home" | "communicate" | "voice" | "library" | "settings";
@@ -128,12 +135,15 @@ export default function App() {
     [recording, setRecording] = useState(false),
     [recordBusy, setRecordBusy] = useState(false),
     [clipName, setClipName] = useState(""),
+    [sampleConsent, setSampleConsent] = useState(false),
+    [sampleReport, setSampleReport] = useState(""),
     [editor, setEditor] = useState<Editor>(null),
     [confirm, setConfirm] = useState<{
       message: string;
       action: () => void;
     } | null>(null),
-    [audioUrl, setAudioUrl] = useState("");
+    [audioUrl, setAudioUrl] = useState(""),
+    [showModelOffer, setShowModelOffer] = useState(false);
   const recorder = useRef(new VoiceRecorder()),
     stateRef = useRef(state),
     queue = useRef(Promise.resolve()),
@@ -143,83 +153,148 @@ export default function App() {
   const [voiceFilter, setVoiceFilter] = useState("");
   const [systemVoiceQuery, setSystemVoiceQuery] = useState("");
   const [previewingSystemVoice, setPreviewingSystemVoice] = useState("");
-  const [systemVoiceAvailability, setSystemVoiceAvailability] = useState<"all" | "offline" | "online">("all");
+  const [systemVoiceAvailability, setSystemVoiceAvailability] = useState<
+    "all" | "offline" | "online"
+  >("all");
   const s = state.settings;
   const be: Record<string, string> = {
     "Voice engine shortcuts": "Хуткі пераход да галасавых рухавікоў",
-    "System TTS": "Сістэмны голас", "My recordings": "Мае запісы",
-    "General": "Агульнае", "Currently active": "Зараз выкарыстоўваецца",
+    "System TTS": "Сістэмны голас",
+    "My recordings": "Мае запісы",
+    General: "Агульнае",
+    "Currently active": "Зараз выкарыстоўваецца",
     "Tip: press Ctrl/⌘ + Enter to speak": "Падказка: Ctrl/⌘ + Enter — агучыць",
-    "Home": "Галоўная", "Communicate": "Зносіны", "Voice Studio": "Студыя голасу",
-    "Library": "Бібліятэка", "Settings": "Налады", "Device default": "Сістэмны голас",
-    "YOUR WORDS, OUT LOUD": "ТВАЕ СЛОВЫ ЎГОЛАС", "Message to speak": "Тэкст для агучвання",
-    "Clear text": "Ачысціць тэкст", "Repeat last speech": "Паўтарыць апошнюю фразу",
-    "Stop": "Спыніць", "Speak": "Прамовіць", "Search phrases": "Пошук фраз",
-    "Find a phrase…": "Знайсці фразу…", "Clear search": "Ачысціць пошук",
-    "All phrases": "Усе фразы", "Favorites": "Выбранае", "New phrase": "Новая фраза",
-    "Skip to content": "Перайсці да змесціва", "Workspace navigation": "Навігацыя па працоўнай прасторы",
-    "Main navigation": "Галоўная навігацыя", "Private by design": "Прыватнасць па змаўчанні",
+    Home: "Галоўная",
+    Communicate: "Зносіны",
+    "Voice Studio": "Студыя голасу",
+    Library: "Бібліятэка",
+    Settings: "Налады",
+    "Device default": "Сістэмны голас",
+    "YOUR WORDS, OUT LOUD": "ТВАЕ СЛОВЫ ЎГОЛАС",
+    "Message to speak": "Тэкст для агучвання",
+    "Clear text": "Ачысціць тэкст",
+    "Repeat last speech": "Паўтарыць апошнюю фразу",
+    Stop: "Спыніць",
+    Speak: "Прамовіць",
+    "Search phrases": "Пошук фраз",
+    "Find a phrase…": "Знайсці фразу…",
+    "Clear search": "Ачысціць пошук",
+    "All phrases": "Усе фразы",
+    Favorites: "Выбранае",
+    "New phrase": "Новая фраза",
+    "Skip to content": "Перайсці да змесціва",
+    "Workspace navigation": "Навігацыя па працоўнай прасторы",
+    "Main navigation": "Галоўная навігацыя",
+    "Private by design": "Прыватнасць па змаўчанні",
     "Your words stay with you.": "Твае словы застаюцца з табой.",
-    "Stored on this device": "Захоўваецца на гэтай прыладзе", "My workspace": "Мая прастора",
-    "Local storage": "Лакальнае сховішча", "Voice language": "Мова голасу",
-    "All languages": "Усе мовы", "System voice": "Сістэмны голас", "Preview voice": "Праслухаць голас",
-    "Speaking speed": "Хуткасць маўлення", "Pitch": "Вышыня тону",
-    "Voice profiles": "Галасавыя профілі", "Save profile": "Захаваць профіль",
-    "Recorded voice": "Запісаны голас", "Start recording": "Пачаць запіс",
-    "Stop & save": "Спыніць і захаваць", "Appearance & language": "Выгляд і мова",
-    "Appearance": "Выгляд", "Interface language": "Мова інтэрфейсу",
-    "Voice settings": "Налады голасу", "Accessibility": "Даступнасць",
-    "Text size": "Памер тэксту", "Phrase card spacing": "Памер картак",
-    "Comfortable": "Зручны", "Compact": "Кампактны", "Reduce motion": "Паменшыць анімацыю",
-    "Backup & restore": "Рэзервовая копія і аднаўленне", "Export backup": "Экспартаваць копію",
-    "Restore backup": "Аднавіць копію", "Privacy & your data": "Прыватнасць і твае даныя",
+    "Stored on this device": "Захоўваецца на гэтай прыладзе",
+    "My workspace": "Мая прастора",
+    "Local storage": "Лакальнае сховішча",
+    "Voice language": "Мова голасу",
+    "All languages": "Усе мовы",
+    "System voice": "Сістэмны голас",
+    "Preview voice": "Праслухаць голас",
+    "Speaking speed": "Хуткасць маўлення",
+    Pitch: "Вышыня тону",
+    "Voice profiles": "Галасавыя профілі",
+    "Save profile": "Захаваць профіль",
+    "Recorded voice": "Запісаны голас",
+    "Start recording": "Пачаць запіс",
+    "Stop & save": "Спыніць і захаваць",
+    "Appearance & language": "Выгляд і мова",
+    Appearance: "Выгляд",
+    "Interface language": "Мова інтэрфейсу",
+    "Voice settings": "Налады голасу",
+    Accessibility: "Даступнасць",
+    "Text size": "Памер тэксту",
+    "Phrase card spacing": "Памер картак",
+    Comfortable: "Зручны",
+    Compact: "Кампактны",
+    "Reduce motion": "Паменшыць анімацыю",
+    "Backup & restore": "Рэзервовая копія і аднаўленне",
+    "Export backup": "Экспартаваць копію",
+    "Restore backup": "Аднавіць копію",
+    "Privacy & your data": "Прыватнасць і твае даныя",
     "Delete all personal data": "Выдаліць усе асабістыя даныя",
     "A place for every conversation": "Месца для кожнай размовы",
-    "A space that works the way you do.": "Прастора, якая працуе так, як табе зручна.",
-    "A thought, a need, a conversation. Start with your words.": "Думка, патрэба, размова. Пачні са сваіх слоў.",
+    "A space that works the way you do.":
+      "Прастора, якая працуе так, як табе зручна.",
+    "A thought, a need, a conversation. Start with your words.":
+      "Думка, патрэба, размова. Пачні са сваіх слоў.",
     "A voice of your own. Always.": "Твой уласны голас. Заўсёды.",
-    "Add a phrase or try a different search.": "Дадай фразу або змяні пошукавы запыт.",
+    "Add a phrase or try a different search.":
+      "Дадай фразу або змяні пошукавы запыт.",
     "Add favorite": "Дадаць у абранае",
     "Backup restored.": "Рэзервовая копія адноўлена.",
-    "Changes could not be saved. Check available storage.": "Не ўдалося захаваць змены. Правер наяўнасць вольнага месца.",
+    "Changes could not be saved. Check available storage.":
+      "Не ўдалося захаваць змены. Правер наяўнасць вольнага месца.",
     "Clear spoken history?": "Ачысціць гісторыю маўлення?",
     "Could not read recordings.": "Не ўдалося прачытаць запісы.",
-    "Could not read the local database. Reload or check browser storage permissions.": "Не ўдалося прачытаць лакальную базу даных. Абнаві старонку або правер дазволы на сховішча браўзера.",
-    "Create a category in the Library first.": "Спачатку ствары катэгорыю ў бібліятэцы.",
+    "Could not read the local database. Reload or check browser storage permissions.":
+      "Не ўдалося прачытаць лакальную базу даных. Абнаві старонку або правер дазволы на сховішча браўзера.",
+    "Create a category in the Library first.":
+      "Спачатку ствары катэгорыю ў бібліятэцы.",
     "Data could not be erased.": "Не ўдалося выдаліць даныя.",
-    "Find the right words. Let your voice do the rest.": "Знайдзі патрэбныя словы, а голас зробіць астатняе.",
-    "Find the voice that feels like you.": "Знайдзі голас, які табе падыходзіць.",
-    "Invalid backup or unavailable storage. Nothing was imported.": "Рэзервовая копія пашкоджаная або сховішча недаступнае. Даныя не імпартаваныя.",
-    "Keep a copy of your phrases, settings, profiles and recordings. Backups contain personal data; store them somewhere you trust.": "Захоўвай копію сваіх фраз, налад, профіляў і запісаў. Рэзервовыя копіі ўтрымліваюць асабістыя даныя — захоўвай іх у надзейным месцы.",
-    "Maximum backup size is 50 MB.": "Максімальны памер рэзервовай копіі — 50 МБ.",
-    "No account. No analytics. Personal phrases and audio stay in your local database. Browser storage can be cleared by the device; export regular backups.": "Без уліковага запісу і аналітыкі. Асабістыя фразы і аўдыя застаюцца ў лакальнай базе даных. Сховішча браўзера можа быць ачышчана прыладай — рэгулярна экспартуй рэзервовыя копіі.",
-    "Permanently erase all phrases, recordings and settings? This cannot be undone.": "Незваротна выдаліць усе фразы, запісы і налады? Гэта дзеянне нельга будзе адмяніць.",
-    "Recording storage limit reached (100 clips / 30 MB). Export a backup and delete older clips.": "Дасягнуты ліміт запісаў (100 файлаў / 30 МБ). Экспартуй рэзервовую копію і выдалі старыя запісы.",
+    "Find the right words. Let your voice do the rest.":
+      "Знайдзі патрэбныя словы, а голас зробіць астатняе.",
+    "Find the voice that feels like you.":
+      "Знайдзі голас, які табе падыходзіць.",
+    "Invalid backup or unavailable storage. Nothing was imported.":
+      "Рэзервовая копія пашкоджаная або сховішча недаступнае. Даныя не імпартаваныя.",
+    "Keep a copy of your phrases, settings, profiles and recordings. Backups contain personal data; store them somewhere you trust.":
+      "Захоўвай копію сваіх фраз, налад, профіляў і запісаў. Рэзервовыя копіі ўтрымліваюць асабістыя даныя — захоўвай іх у надзейным месцы.",
+    "Maximum backup size is 50 MB.":
+      "Максімальны памер рэзервовай копіі — 50 МБ.",
+    "No account. No analytics. Personal phrases and audio stay in your local database. Browser storage can be cleared by the device; export regular backups.":
+      "Без уліковага запісу і аналітыкі. Асабістыя фразы і аўдыя застаюцца ў лакальнай базе даных. Сховішча браўзера можа быць ачышчана прыладай — рэгулярна экспартуй рэзервовыя копіі.",
+    "Permanently erase all phrases, recordings and settings? This cannot be undone.":
+      "Незваротна выдаліць усе фразы, запісы і налады? Гэта дзеянне нельга будзе адмяніць.",
+    "Recording storage limit reached (100 clips / 30 MB). Export a backup and delete older clips.":
+      "Дасягнуты ліміт запісаў (100 файлаў / 30 МБ). Экспартуй рэзервовую копію і выдалі старыя запісы.",
     "Remove favorite": "Выдаліць з абранага",
     "Rename category": "Перайменаваць катэгорыю",
-    "Replace all local data with this backup?": "Замяніць усе лакальныя даныя гэтай рэзервовай копіяй?",
-    "Spoken phrases will appear here for a quick repeat.": "Тут будуць з'яўляцца агучаныя фразы для хуткага паўтору.",
-    "The words that matter, always within reach.": "Важныя словы заўсёды будуць пад рукой.",
-    "This change exceeds the data limits or contains invalid values.": "Гэта змяненне перавышае ліміт даных або змяшчае няправільныя значэнні.",
+    "Replace all local data with this backup?":
+      "Замяніць усе лакальныя даныя гэтай рэзервовай копіяй?",
+    "Spoken phrases will appear here for a quick repeat.":
+      "Тут будуць з'яўляцца агучаныя фразы для хуткага паўтору.",
+    "The words that matter, always within reach.":
+      "Важныя словы заўсёды будуць пад рукой.",
+    "This change exceeds the data limits or contains invalid values.":
+      "Гэта змяненне перавышае ліміт даных або змяшчае няправільныя значэнні.",
     "What would you like to say?": "Што ты хочаш сказаць?",
     "Your conversations begin here.": "Твае размовы пачынаюцца тут.",
-    "Your voice deserves to be heard, at your own pace.": "Твой голас заслугоўвае быць пачутым — у зручным для цябе тэмпе.",
-    "Your words. Your voice. Your independence.": "Твае словы. Твой голас. Твая незалежнасць.",
+    "Your voice deserves to be heard, at your own pace.":
+      "Твой голас заслугоўвае быць пачутым — у зручным для цябе тэмпе.",
+    "Your words. Your voice. Your independence.":
+      "Твае словы. Твой голас. Твая незалежнасць.",
     "My personal space": "Мая асабістая прастора",
     "Recording name": "Назва запісу",
     "Adaptive pacing": "Адаптыўны тэмп",
     "Voice engine mode": "Рэжым галасавога рухавіка",
-    "Automatic": "Аўтаматычна",
+    Automatic: "Аўтаматычна",
     "System voice only": "Толькі сістэмны голас",
     "Installed neural voices": "Усталяваныя нейрасеткавыя галасы",
-    "Automatic uses an installed offline neural model when available; otherwise ECHO uses the device voice. No text is sent online in this version.": "Аўтаматычны рэжым выкарыстоўвае ўсталяваную лакальную нейрасеткавую мадэль, калі яна даступная; інакш ECHO выкарыстоўвае сістэмны голас. У гэтай версіі тэкст не адпраўляецца ў інтэрнэт.",
-    "Off": "Выключана",
+    "Automatic uses an installed offline neural model when available; otherwise ECHO uses the device voice. No text is sent online in this version.":
+      "Аўтаматычны рэжым выкарыстоўвае ўсталяваную лакальную нейрасеткавую мадэль, калі яна даступная; інакш ECHO выкарыстоўвае сістэмны голас. У гэтай версіі тэкст не адпраўляецца ў інтэрнэт.",
+    Off: "Выключана",
     "Smart pacing": "Разумны тэмп",
-    "Smart pacing gently adjusts speech rate for longer sentences and punctuation. It does not infer emotions.": "Разумны тэмп мякка змяняе хуткасць маўлення ў залежнасці ад даўжыні фразы і пунктуацыі. Эмоцыі не распазнаюцца.",
-    "Phrase language": "Мова фразы", "Phrase": "Фраза", "Category": "Катэгорыя",
-    "Add to favorites": "Дадаць у выбранае", "Name": "Назва", "Cancel": "Скасаваць",
-    "Save": "Захаваць", "Confirm": "Пацвердзіць", "Please confirm": "Пацвердзі дзеянне",
+    "Smart pacing gently adjusts speech rate for longer sentences and punctuation. It does not infer emotions.":
+      "Разумны тэмп мякка змяняе хуткасць маўлення ў залежнасці ад даўжыні фразы і пунктуацыі. Эмоцыі не распазнаюцца.",
+    "Phrase language": "Мова фразы",
+    Phrase: "Фраза",
+    Category: "Катэгорыя",
+    "Add to favorites": "Дадаць у выбранае",
+    Name: "Назва",
+    Cancel: "Скасаваць",
+    Save: "Захаваць",
+    Confirm: "Пацвердзіць",
+    "Please confirm": "Пацвердзі дзеянне",
     "Voice recording": "Запіс голасу",
+    "Set up your offline neural voice": "Наладзь свой афлайн-нейраголас",
+    "Install the matching model once. ECHO will restore it automatically after later restarts.":
+      "Усталюй адпаведную мадэль адзін раз. Пасля перазапуску ECHO адновіць яе аўтаматычна.",
+    "Set up voice": "Наладзіць голас",
+    Later: "Пазней",
     "Recording saved on this device.": "Запіс захаваны на гэтай прыладзе.",
     "A little space for your words": "Месца для тваіх слоў",
     "A voice of your own": "Твой уласны голас",
@@ -230,21 +305,21 @@ export default function App() {
     "Dismiss message": "Закрыць паведамленне",
     "Your go-to phrases": "Твае асноўныя фразы",
     "View all": "Паказаць усе",
-    "phrases": "фраз",
+    phrases: "фраз",
     "Recent speech": "Апошнія выказванні",
     "Recently spoken": "Нядаўна агучана",
     "ON THIS DEVICE": "НА ГЭТАЙ ПРЫЛАДЗЕ",
     "A little more time is okay.": "Можна не спяшацца.",
     "Phrase collection": "Зборнік фраз",
     "Add phrase": "Дадаць фразу",
-    "History": "Гісторыя",
+    History: "Гісторыя",
     "Clear history": "Ачысціць гісторыю",
-    "Categories": "Катэгорыі",
+    Categories: "Катэгорыі",
     "New category": "Новая катэгорыя",
-    "Rename": "Перайменаваць",
+    Rename: "Перайменаваць",
     "Delete category": "Выдаліць катэгорыю",
     "Your phrases": "Твае фразы",
-    "Add": "Дадаць",
+    Add: "Дадаць",
     "Move up": "Перамясціць вышэй",
     "Move down": "Перамясціць ніжэй",
     "Toggle favorite": "Змяніць абранае",
@@ -254,23 +329,29 @@ export default function App() {
     "Make it sound like you": "Наладзь голас",
     "Delete profile": "Выдаліць профіль",
     "Delete recording": "Выдаліць запіс",
-    "Light": "Светлая",
-    "Dark": "Цёмная",
-    "System": "Сістэмная",
+    Light: "Светлая",
+    Dark: "Цёмная",
+    System: "Сістэмная",
     "Save voice profile": "Захаваць профіль голасу",
     "Backup exported.": "Рэзервовая копія экспартаваная.",
     "Could not export backup.": "Не ўдалося экспартаваць рэзервовую копію.",
     "Please check your entry.": "Правер уведзеныя даныя.",
     "Delete this phrase?": "Выдаліць гэтую фразу?",
-    "Record a phrase in your own voice. Clips are saved locally and played back exactly as recorded.": "Запішы фразу сваім голасам. Запісы захоўваюцца на прыладзе і прайграваюцца без змен.",
+    "Record a phrase in your own voice. Clips are saved locally and played back exactly as recorded.":
+      "Запішы фразу сваім голасам. Запісы захоўваюцца на прыладзе і прайграваюцца без змен.",
     "e.g. A personal greeting": "Напрыклад, асабістае прывітанне",
-    "Microphone permission required · Up to 60 seconds": "Патрэбны доступ да мікрафона · Да 60 секунд",
-    "Your device’s speech engine. Ready when you are.": "Галасавы рухавік тваёй прылады. Гатовы да працы.",
+    "Microphone permission required · Up to 60 seconds":
+      "Патрэбны доступ да мікрафона · Да 60 секунд",
+    "Your device’s speech engine. Ready when you are.":
+      "Галасавы рухавік тваёй прылады. Гатовы да працы.",
     "Hello. This is my voice.": "Добры дзень. Гэта мой голас.",
-    "Only voices marked offline are guaranteed to work without a network. Install language packs in Android settings.": "Без інтэрнэту гарантуюць працу толькі галасы з пазнакай offline. Усталюй моўныя пакеты ў наладах Android.",
-    "No voices reported yet. Install a system TTS engine or language pack.": "Галасы пакуль не знойдзены. Усталюй сістэмны TTS-рухавік або моўны пакет.",
+    "Only voices marked offline are guaranteed to work without a network. Install language packs in Android settings.":
+      "Без інтэрнэту гарантуюць працу толькі галасы з пазнакай offline. Усталюй моўныя пакеты ў наладах Android.",
+    "No voices reported yet. Install a system TTS engine or language pack.":
+      "Галасы пакуль не знойдзены. Усталюй сістэмны TTS-рухавік або моўны пакет.",
     "Delete this recording?": "Выдаліць гэты запіс?",
-    "This audio format cannot be played on this device.": "Гэты фармат аўдыя не падтрымліваецца прыладай.",
+    "This audio format cannot be played on this device.":
+      "Гэты фармат аўдыя не падтрымліваецца прыладай.",
     "Delete all personal data?": "Выдаліць усе асабістыя даныя?",
     "Restore this backup?": "Аднавіць гэтую рэзервовую копію?",
   };
@@ -308,6 +389,28 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
+    if (!ready) return;
+    let active = true;
+    try {
+      if (localStorage.getItem("echo-model-offer-dismissed-v1") === "1") return;
+    } catch {
+      // The offer still works when storage is unavailable.
+    }
+    void isSupertonicModelCached().then((supertonic) => {
+      if (!active) return;
+      const installed =
+        s.language === "en"
+          ? hasLocalAIInstallConsent()
+          : s.language === "ru"
+            ? supertonic
+            : false;
+      setShowModelOffer(!installed);
+    });
+    return () => {
+      active = false;
+    };
+  }, [ready, s.language]);
+  useEffect(() => {
     const mq = matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
       document.documentElement.dataset.theme =
@@ -320,8 +423,11 @@ export default function App() {
     document.documentElement.dataset.motion = s.reducedMotion
       ? "reduced"
       : "normal";
+    document.documentElement.dataset.contrast = s.highContrast
+      ? "high"
+      : "normal";
     return () => mq.removeEventListener("change", apply);
-  }, [s.theme, s.language, s.textSize, s.reducedMotion]);
+  }, [s.theme, s.language, s.textSize, s.reducedMotion, s.highContrast]);
   useEffect(() => {
     const pause = () => {
       if (document.hidden) {
@@ -431,7 +537,15 @@ export default function App() {
           ].slice(0, 100),
         }));
     } catch (e) {
-      setNotice((e as Error).message);
+      if (e instanceof NeuralVoiceUnavailableError) {
+        setShowModelOffer(true);
+        setNotice(
+          t(
+            "A matching neural voice is not ready. Install it in Voice Studio, or explicitly select the emergency device voice in Settings.",
+            "Подходящий нейросетевой голос не готов. Установите его в Студии голоса или явно выберите аварийный голос устройства в Настройках.",
+          ),
+        );
+      } else setNotice((e as Error).message);
     } finally {
       if (id === speakId.current) setSpeaking(false);
     }
@@ -441,8 +555,14 @@ export default function App() {
     setPreviewingSystemVoice(voice.id);
     try {
       await speech.speak(
-        t("Hello. This is a voice preview.", "Здравствуйте. Это пример голоса."),
-        adaptiveSpeechSettings("Hello. This is a voice preview.", { ...s, voice: voice.id }),
+        t(
+          "Hello. This is a voice preview.",
+          "Здравствуйте. Это пример голоса.",
+        ),
+        adaptiveSpeechSettings("Hello. This is a voice preview.", {
+          ...s,
+          voice: voice.id,
+        }),
         voice.language,
       );
     } catch (error) {
@@ -512,6 +632,67 @@ export default function App() {
       setRecordBusy(false);
     }
   }
+  async function importVoiceSample(file: File) {
+    if (!sampleConsent || recordBusy) return;
+    setRecordBusy(true);
+    setSampleReport("");
+    try {
+      const supportedTypes = new Set([
+        "audio/webm",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/aac",
+        "audio/x-m4a",
+        "audio/ogg",
+        "audio/wav",
+      ]);
+      const type = file.type.split(";")[0].toLowerCase();
+      if (!supportedTypes.has(type))
+        throw new Error(
+          t(
+            "Choose a WAV, MP3, M4A, AAC, OGG or WebM audio file.",
+            "Выберите аудиофайл WAV, MP3, M4A, AAC, OGG или WebM.",
+          ),
+        );
+      const assessment = await inspectVoiceSample(file);
+      if (!assessment.accepted) throw new Error(assessment.problems.join(" "));
+      const existing = await getClips();
+      if (
+        existing.length >= 100 ||
+        existing.reduce((total, clip) => total + clip.blob.size, file.size) >
+          30 * 1024 * 1024
+      )
+        throw new Error(
+          t(
+            "Recording storage limit reached (100 clips / 30 MB). Export a backup and delete older clips.",
+            "Лимит записей: 100 записей / 30 МБ. Создайте копию и удалите старые записи.",
+          ),
+        );
+      await putClip({
+        id: crypto.randomUUID(),
+        name: (clipName.trim() || file.name.replace(/\.[^.]+$/u, "")).slice(
+          0,
+          100,
+        ),
+        blob: new Blob([await file.arrayBuffer()], { type }),
+        createdAt: Date.now(),
+      });
+      setClips(await getClips());
+      setClipName("");
+      setSampleReport(
+        t(
+          `Quality check passed · ${assessment.durationSeconds.toFixed(1)} seconds · stored locally. This is a prepared sample, not a cloned voice.`,
+          `Проверка качества пройдена · ${assessment.durationSeconds.toFixed(1)} с · образец сохранён локально. Это подготовленный образец, а не клонированный голос.`,
+        ),
+      );
+    } catch (error) {
+      setSampleReport(
+        error instanceof Error ? error.message : "Could not import audio.",
+      );
+    } finally {
+      setRecordBusy(false);
+    }
+  }
   const nav: [Page, typeof Home, string][] = [
     ["home", Home, t("Home", "Главная")],
     ["communicate", MessageSquare, t("Communicate", "Общение")],
@@ -522,10 +703,14 @@ export default function App() {
   const activeVoice = voices.find((v) => v.id === s.voice);
   const voiceLabel =
     activeVoice?.name || t("Device default", "Системный голос");
-  const filteredSystemVoices = voices.filter((v) =>
-    (!voiceFilter || v.language === voiceFilter) &&
-    (systemVoiceAvailability === "all" || (systemVoiceAvailability === "offline" ? v.local : !v.local)) &&
-    (v.name + " " + v.language).toLowerCase().includes(systemVoiceQuery.trim().toLowerCase())
+  const filteredSystemVoices = voices.filter(
+    (v) =>
+      (!voiceFilter || v.language === voiceFilter) &&
+      (systemVoiceAvailability === "all" ||
+        (systemVoiceAvailability === "offline" ? v.local : !v.local)) &&
+      (v.name + " " + v.language)
+        .toLowerCase()
+        .includes(systemVoiceQuery.trim().toLowerCase()),
   );
   function card(p: Phrase) {
     return (
@@ -574,7 +759,12 @@ export default function App() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && text.trim() && !speaking) {
+            if (
+              (event.ctrlKey || event.metaKey) &&
+              event.key === "Enter" &&
+              text.trim() &&
+              !speaking
+            ) {
               event.preventDefault();
               void say();
             }
@@ -587,7 +777,10 @@ export default function App() {
           )}
         />
         <p className="composer-shortcut" id="composer-shortcut">
-          {t("Tip: press Ctrl/⌘ + Enter to speak", "Подсказка: Ctrl/⌘ + Enter — произнести")}
+          {t(
+            "Tip: press Ctrl/⌘ + Enter to speak",
+            "Подсказка: Ctrl/⌘ + Enter — произнести",
+          )}
         </p>
         <div className="composer-bottom">
           <button className="voice-chip" onClick={() => go("voice")}>
@@ -726,7 +919,14 @@ export default function App() {
     );
   return (
     <div className={`app ${s.cardSize}`}>
-      <a className="skip-link" href="#main-content" onClick={event => {event.preventDefault(); document.getElementById("main-content")?.focus();}}>
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("main-content")?.focus();
+        }}
+      >
         {t("Skip to content", "Перейти к содержимому")}
       </a>
       <aside
@@ -746,7 +946,9 @@ export default function App() {
           </span>
           <span className="brand-wordmark">
             ECHO
-            <small>{t("ГОЛОС ТЕХ, КТО НЕ СЛЫШИТ", "ГОЛОС ТЕХ, КТО НЕ СЛЫШИТ")}</small>
+            <small>
+              {t("ГОЛОС ТЕХ, КТО НЕ СЛЫШИТ", "ГОЛОС ТЕХ, КТО НЕ СЛЫШИТ")}
+            </small>
           </span>
         </a>
         <div className="nav-label">{t("YOUR SPACE", "ВАШЕ ПРОСТРАНСТВО")}</div>
@@ -777,7 +979,9 @@ export default function App() {
             </div>
           </div>
           <button className="device-profile" onClick={() => go("settings")}>
-            <span className="avatar avatar-logo"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="ECHO" /></span>
+            <span className="avatar avatar-logo">
+              <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="ECHO" />
+            </span>
             <span>
               {t("My personal space", "Моё пространство")}
               <small>
@@ -860,6 +1064,64 @@ export default function App() {
                 <X size={17} />
               </button>
             </div>
+          )}
+          {page === "home" && showModelOffer && (
+            <section
+              className="panel"
+              aria-label={t(
+                "Offline neural voice setup",
+                "Настройка офлайн-голоса",
+              )}
+            >
+              <div className="section-head">
+                <div>
+                  <h2>
+                    {t(
+                      "Set up your offline neural voice",
+                      "Настройте офлайн-нейроголос",
+                    )}
+                  </h2>
+                  <p>
+                    {t(
+                      "Install the matching model once. ECHO will restore it automatically after later restarts.",
+                      "Установите подходящую модель один раз. После следующих запусков ECHO восстановит её автоматически.",
+                    )}
+                  </p>
+                </div>
+                <button
+                  className="primary"
+                  onClick={() => {
+                    try {
+                      localStorage.setItem(
+                        "echo-model-offer-dismissed-v1",
+                        "1",
+                      );
+                    } catch {
+                      /* optional */
+                    }
+                    setShowModelOffer(false);
+                    go("voice");
+                  }}
+                >
+                  {t("Set up voice", "Настроить голос")}
+                </button>
+                <button
+                  onClick={() => {
+                    try {
+                      localStorage.setItem(
+                        "echo-model-offer-dismissed-v1",
+                        "1",
+                      );
+                    } catch {
+                      /* optional */
+                    }
+                    setShowModelOffer(false);
+                  }}
+                >
+                  {t("Later", "Позже")}
+                </button>
+              </div>
+            </section>
           )}
           {(page === "home" || page === "communicate") && (
             <>
@@ -1056,7 +1318,11 @@ export default function App() {
                   {state.categories.map((c) => (
                     <div className="category-row" key={c.id}>
                       <button
-                        className={category === c.id && !favorites ? "text-button category-filter-button active" : "text-button category-filter-button"}
+                        className={
+                          category === c.id && !favorites
+                            ? "text-button category-filter-button active"
+                            : "text-button category-filter-button"
+                        }
                         aria-pressed={category === c.id && !favorites}
                         onClick={() => {
                           setCategory(c.id);
@@ -1199,12 +1465,37 @@ export default function App() {
           )}
           {page === "voice" && (
             <>
-              <nav className="voice-engine-nav" aria-label={t("Voice engine shortcuts", "Быстрый переход к голосовым движкам")}>
-                <button type="button" onClick={() => jumpToVoiceEngine("recorded-voice-panel")}>{t("My recordings", "Мои записи")}</button>
-                <button type="button" onClick={() => jumpToVoiceEngine("kokoro-voice-engine")}>Kokoro</button>
-                <button type="button" onClick={() => jumpToVoiceEngine("supertonic-voice-engine")}>Supertonic</button>
+              <nav
+                className="voice-engine-nav"
+                aria-label={t(
+                  "Voice engine shortcuts",
+                  "Быстрый переход к голосовым движкам",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => jumpToVoiceEngine("recorded-voice-panel")}
+                >
+                  {t("My recordings", "Мои записи")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => jumpToVoiceEngine("kokoro-voice-engine")}
+                >
+                  Kokoro
+                </button>
+                <button
+                  type="button"
+                  onClick={() => jumpToVoiceEngine("supertonic-voice-engine")}
+                >
+                  Supertonic
+                </button>
               </nav>
-              <div className="voice-overview panel" id="system-voice-engine" hidden>
+              <div
+                className="voice-overview panel"
+                id="system-voice-engine"
+                hidden
+              >
                 <span className="large-wave">
                   <AudioLines size={36} />
                 </span>
@@ -1242,47 +1533,182 @@ export default function App() {
                     <div className="system-voice-tools">
                       <label className="system-voice-language">
                         {t("Voice language", "Язык голоса")}
-                        <select value={voiceFilter} onChange={(e) => setVoiceFilter(e.target.value)}>
-                          <option value="">{t("All languages", "Все языки")}</option>
-                          {[...new Set(voices.map((v) => v.language))].map((l) => <option key={l}>{l}</option>)}
+                        <select
+                          value={voiceFilter}
+                          onChange={(e) => setVoiceFilter(e.target.value)}
+                        >
+                          <option value="">
+                            {t("All languages", "Все языки")}
+                          </option>
+                          {[...new Set(voices.map((v) => v.language))].map(
+                            (l) => (
+                              <option key={l}>{l}</option>
+                            ),
+                          )}
                         </select>
                       </label>
                       <label className="system-voice-search">
                         {t("Find a voice", "Найти голос")}
                         <span className="system-voice-search-box">
                           <Search size={17} />
-                          <input value={systemVoiceQuery} onChange={(e) => setSystemVoiceQuery(e.target.value)} placeholder={t("Search by name or language", "Поиск по имени или языку")} />
-                          {systemVoiceQuery && <button type="button" className="system-voice-clear" onClick={() => setSystemVoiceQuery("")} aria-label={t("Clear search", "Очистить поиск")}><X size={15} /></button>}
+                          <input
+                            value={systemVoiceQuery}
+                            onChange={(e) =>
+                              setSystemVoiceQuery(e.target.value)
+                            }
+                            placeholder={t(
+                              "Search by name or language",
+                              "Поиск по имени или языку",
+                            )}
+                          />
+                          {systemVoiceQuery && (
+                            <button
+                              type="button"
+                              className="system-voice-clear"
+                              onClick={() => setSystemVoiceQuery("")}
+                              aria-label={t("Clear search", "Очистить поиск")}
+                            >
+                              <X size={15} />
+                            </button>
+                          )}
                         </span>
                       </label>
                     </div>
                     <div className="system-voice-filter-row">
-                      <div className="system-voice-filters" role="group" aria-label={t("Voice availability", "Доступность голоса")}>
-                        {(["all", "offline", "online"] as const).map((availability) => <button type="button" key={availability} className={systemVoiceAvailability === availability ? "active" : ""} aria-pressed={systemVoiceAvailability === availability} onClick={() => setSystemVoiceAvailability(availability)}>{availability === "all" ? t("All voices", "Все голоса") : availability === "offline" ? t("Offline", "Офлайн") : t("Online", "Онлайн")}</button>)}
+                      <div
+                        className="system-voice-filters"
+                        role="group"
+                        aria-label={t(
+                          "Voice availability",
+                          "Доступность голоса",
+                        )}
+                      >
+                        {(["all", "offline", "online"] as const).map(
+                          (availability) => (
+                            <button
+                              type="button"
+                              key={availability}
+                              className={
+                                systemVoiceAvailability === availability
+                                  ? "active"
+                                  : ""
+                              }
+                              aria-pressed={
+                                systemVoiceAvailability === availability
+                              }
+                              onClick={() =>
+                                setSystemVoiceAvailability(availability)
+                              }
+                            >
+                              {availability === "all"
+                                ? t("All voices", "Все голоса")
+                                : availability === "offline"
+                                  ? t("Offline", "Офлайн")
+                                  : t("Online", "Онлайн")}
+                            </button>
+                          ),
+                        )}
                       </div>
-                      <span className="system-voice-count">{filteredSystemVoices.length} {t("voices found", "голосов найдено")}</span>
+                      <span className="system-voice-count">
+                        {filteredSystemVoices.length}{" "}
+                        {t("voices found", "голосов найдено")}
+                      </span>
                     </div>
                     <div className="system-voice-list">
-                      <button type="button" className={!s.voice ? "system-voice-option selected" : "system-voice-option"} aria-pressed={!s.voice} onClick={() => setting("voice", "")}>
-                        <span className="system-voice-icon"><Volume2 size={18} /></span>
-                        <span className="system-voice-copy"><strong>{t("Device default", "По умолчанию")}</strong><small>{t("Let the device choose", "Выбор устройства")}</small></span>
-                        <span className="system-voice-check">{!s.voice ? <Check size={16} /> : null}</span>
+                      <button
+                        type="button"
+                        className={
+                          !s.voice
+                            ? "system-voice-option selected"
+                            : "system-voice-option"
+                        }
+                        aria-pressed={!s.voice}
+                        onClick={() => setting("voice", "")}
+                      >
+                        <span className="system-voice-icon">
+                          <Volume2 size={18} />
+                        </span>
+                        <span className="system-voice-copy">
+                          <strong>{t("Device default", "По умолчанию")}</strong>
+                          <small>
+                            {t("Let the device choose", "Выбор устройства")}
+                          </small>
+                        </span>
+                        <span className="system-voice-check">
+                          {!s.voice ? <Check size={16} /> : null}
+                        </span>
                       </button>
                       {filteredSystemVoices.map((v) => (
-                        <div className={s.voice === v.id ? "system-voice-option selected" : "system-voice-option"} key={v.id}>
-                          <button type="button" className="system-voice-select" aria-pressed={s.voice === v.id} onClick={() => setting("voice", v.id)}>
-                            <span className="system-voice-icon"><Volume2 size={18} /></span>
-                            <span className="system-voice-copy"><strong>{v.name}</strong><small>{v.language}</small></span>
-                            <span className={v.local ? "system-voice-status offline" : "system-voice-status online"}>{v.local ? t("Offline", "Офлайн") : t("Online", "Онлайн")}</span>
-                            <span className="system-voice-check">{s.voice === v.id ? <Check size={16} /> : null}</span>
+                        <div
+                          className={
+                            s.voice === v.id
+                              ? "system-voice-option selected"
+                              : "system-voice-option"
+                          }
+                          key={v.id}
+                        >
+                          <button
+                            type="button"
+                            className="system-voice-select"
+                            aria-pressed={s.voice === v.id}
+                            onClick={() => setting("voice", v.id)}
+                          >
+                            <span className="system-voice-icon">
+                              <Volume2 size={18} />
+                            </span>
+                            <span className="system-voice-copy">
+                              <strong>{v.name}</strong>
+                              <small>{v.language}</small>
+                            </span>
+                            <span
+                              className={
+                                v.local
+                                  ? "system-voice-status offline"
+                                  : "system-voice-status online"
+                              }
+                            >
+                              {v.local
+                                ? t("Offline", "Офлайн")
+                                : t("Online", "Онлайн")}
+                            </span>
+                            <span className="system-voice-check">
+                              {s.voice === v.id ? <Check size={16} /> : null}
+                            </span>
                           </button>
-                          <button type="button" className="system-voice-preview" disabled={Boolean(previewingSystemVoice)} onClick={() => void previewSystemVoice(v)} aria-label={t("Preview voice", "Прослушать голос") + " " + v.name}>
-                            <Play size={14} fill="currentColor" /> {previewingSystemVoice === v.id ? t("Playing", "Звучит") : t("Listen", "Слушать")}
+                          <button
+                            type="button"
+                            className="system-voice-preview"
+                            disabled={Boolean(previewingSystemVoice)}
+                            onClick={() => void previewSystemVoice(v)}
+                            aria-label={
+                              t("Preview voice", "Прослушать голос") +
+                              " " +
+                              v.name
+                            }
+                          >
+                            <Play size={14} fill="currentColor" />{" "}
+                            {previewingSystemVoice === v.id
+                              ? t("Playing", "Звучит")
+                              : t("Listen", "Слушать")}
                           </button>
                         </div>
                       ))}
-                      {!voices.length && <p className="system-voice-empty">{t("No installed voices found. Install a speech engine or language pack in device settings.", "Установленные голоса не найдены. Добавьте движок речи или языковой пакет в настройках устройства.")}</p>}
-                      {voices.length > 0 && !filteredSystemVoices.length && <p className="system-voice-empty">{t("No voices match these filters. Try another language or reset the filters.", "Нет голосов по этим фильтрам. Выберите другой язык или сбросьте фильтры.")}</p>}
+                      {!voices.length && (
+                        <p className="system-voice-empty">
+                          {t(
+                            "No installed voices found. Install a speech engine or language pack in device settings.",
+                            "Установленные голоса не найдены. Добавьте движок речи или языковой пакет в настройках устройства.",
+                          )}
+                        </p>
+                      )}
+                      {voices.length > 0 && !filteredSystemVoices.length && (
+                        <p className="system-voice-empty">
+                          {t(
+                            "No voices match these filters. Try another language or reset the filters.",
+                            "Нет голосов по этим фильтрам. Выберите другой язык или сбросьте фильтры.",
+                          )}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <p className="field-note" hidden>
@@ -1308,27 +1734,51 @@ export default function App() {
                     {t("Adaptive pacing", "Адаптивный темп")}
                     <select
                       value={s.adaptiveVoice}
-                      onChange={(e) => setting("adaptiveVoice", e.target.value as "off" | "smart")}
+                      onChange={(e) =>
+                        setting(
+                          "adaptiveVoice",
+                          e.target.value as "off" | "smart",
+                        )
+                      }
                     >
                       <option value="off">{t("Off", "Выключено")}</option>
-                      <option value="smart">{t("Smart pacing", "Умный темп")}</option>
+                      <option value="smart">
+                        {t("Smart pacing", "Умный темп")}
+                      </option>
                     </select>
                   </label>
                   <label>
                     {t("Voice engine mode", "Режим голосового движка")}
                     <select
                       value={s.speechMode}
-                      onChange={(e) => setting("speechMode", e.target.value as "auto" | "system" | "neural")}
+                      onChange={(e) =>
+                        setting(
+                          "speechMode",
+                          e.target.value as "auto" | "system" | "neural",
+                        )
+                      }
                     >
-                      <option value="auto">{t("Automatic", "Автоматически")}</option>
-                      <option value="system">{t("System voice only", "Только системный голос")}</option>
-                      <option value="neural">{t("Installed neural voices", "Установленные нейросетевые голоса")}</option>
+                      <option value="auto">
+                        {t("Automatic", "Автоматически")}
+                      </option>
+                      <option value="system">
+                        {t(
+                          "Emergency device voice",
+                          "Аварийный голос устройства",
+                        )}
+                      </option>
+                      <option value="neural">
+                        {t(
+                          "Installed neural voices",
+                          "Установленные нейросетевые голоса",
+                        )}
+                      </option>
                     </select>
                   </label>
                   <p className="field-note">
                     {t(
-                      "Automatic and Neural modes use downloaded offline models when available; otherwise ECHO falls back to the device voice so communication remains available. No text is sent online in this version.",
-                      "Автоматический режим и режим нейроголоса используют скачанные офлайн-модели, если они доступны. Иначе ECHO переключается на голос устройства, чтобы общение не прерывалось. В этой версии текст не отправляется в интернет.",
+                      "Automatic and Neural modes use downloaded offline models. If no matching neural voice is ready, ECHO shows a warning instead of silently changing the voice or language. The emergency device voice works only when you explicitly select it. No text is sent online.",
+                      "Автоматический режим и режим нейроголоса используют скачанные офлайн-модели. Если подходящий голос не готов, ECHO показывает предупреждение и не меняет голос или язык незаметно. Аварийный голос устройства работает только после явного выбора. Текст не отправляется в интернет.",
                     )}
                   </p>
                   <p className="field-note">
@@ -1347,11 +1797,20 @@ export default function App() {
                   </div>
                   {state.profiles.map((p) => {
                     const selected =
-                      p.voice === s.voice && p.rate === s.rate && p.pitch === s.pitch;
+                      p.voice === s.voice &&
+                      p.rate === s.rate &&
+                      p.pitch === s.pitch;
                     return (
-                      <div className="category-row voice-profile-row" key={p.id}>
+                      <div
+                        className="category-row voice-profile-row"
+                        key={p.id}
+                      >
                         <button
-                          className={selected ? "text-button voice-profile-select active" : "text-button voice-profile-select"}
+                          className={
+                            selected
+                              ? "text-button voice-profile-select active"
+                              : "text-button voice-profile-select"
+                          }
                           aria-pressed={selected}
                           onClick={() =>
                             update((v) => ({
@@ -1367,18 +1826,27 @@ export default function App() {
                         >
                           {p.name}
                           {selected && <Check size={15} />}
-                          {selected && <small>{t("Currently active", "Сейчас используется")}</small>}
+                          {selected && (
+                            <small>
+                              {t("Currently active", "Сейчас используется")}
+                            </small>
+                          )}
                         </button>
                         <button
                           className="icon"
                           aria-label={t("Delete profile", "Удалить профиль")}
                           onClick={() =>
                             setConfirm({
-                              message: t("Delete this voice profile?", "Удалить этот профиль голоса?"),
+                              message: t(
+                                "Delete this voice profile?",
+                                "Удалить этот профиль голоса?",
+                              ),
                               action: () =>
                                 update((v) => ({
                                   ...v,
-                                  profiles: v.profiles.filter((x) => x.id !== p.id),
+                                  profiles: v.profiles.filter(
+                                    (x) => x.id !== p.id,
+                                  ),
                                 })),
                             })
                           }
@@ -1430,6 +1898,47 @@ export default function App() {
                       "Требуется доступ к микрофону · До 60 секунд",
                     )}
                   </p>
+                  <div className="voice-sample-import">
+                    <label className="checkbox">
+                      <input
+                        type="checkbox"
+                        checked={sampleConsent}
+                        onChange={(event) =>
+                          setSampleConsent(event.target.checked)
+                        }
+                      />
+                      <span>
+                        {t(
+                          "I confirm the voice owner consented to preparing this local sample.",
+                          "Я подтверждаю согласие владельца голоса на подготовку этого локального образца.",
+                        )}
+                      </span>
+                    </label>
+                    <label
+                      className="file-button"
+                      aria-disabled={!sampleConsent || recordBusy}
+                    >
+                      <Upload size={17} />
+                      {t("Import voice sample", "Импортировать образец голоса")}
+                      <input
+                        type="file"
+                        accept="audio/wav,audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/webm,.m4a"
+                        disabled={!sampleConsent || recordBusy}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = "";
+                          if (file) void importVoiceSample(file);
+                        }}
+                      />
+                    </label>
+                    <p className="field-note" role="status" aria-live="polite">
+                      {sampleReport ||
+                        t(
+                          "Imported samples are decoded and checked locally for duration, silence and clipping. No cloning engine is enabled and nothing is uploaded.",
+                          "Импортированный образец локально проверяется на длительность, тишину и перегрузку. Движок клонирования не включён, данные никуда не отправляются.",
+                        )}
+                    </p>
+                  </div>
                   {clips.map((c) => (
                     <div className="clip-row" key={c.id}>
                       <Headphones size={18} />
@@ -1523,7 +2032,10 @@ export default function App() {
                     <select
                       value={s.language}
                       onChange={(e) =>
-                        setting("language", e.target.value as "en" | "ru" | "be")
+                        setting(
+                          "language",
+                          e.target.value as "en" | "ru" | "be",
+                        )
                       }
                     >
                       <option value="en">English</option>
@@ -1575,6 +2087,16 @@ export default function App() {
                       }
                     />
                     <span>{t("Reduce motion", "Уменьшить анимацию")}</span>
+                  </label>
+                  <label className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={s.highContrast}
+                      onChange={(e) =>
+                        setting("highContrast", e.target.checked)
+                      }
+                    />
+                    <span>{t("High contrast", "Высокая контрастность")}</span>
                   </label>
                   <p className="field-note">
                     {t(
@@ -1709,7 +2231,7 @@ export default function App() {
                 </span>
                 <div>
                   <strong>
-                    ECHO <span>0.1.0</span>
+                    ECHO <span>1.1.0</span>
                   </strong>
                   <p>
                     {t(
@@ -1826,10 +2348,7 @@ export default function App() {
               <button type="button" onClick={() => setEditor(null)}>
                 {t("Cancel", "Отмена")}
               </button>
-              <button
-                className="primary"
-                
-              >
+              <button className="primary">
                 <Check size={17} />
                 {t("Save", "Сохранить")}
               </button>
@@ -1937,9 +2456,13 @@ export default function App() {
     const f = new FormData(e.currentTarget);
     try {
       if (editor?.kind === "phrase") {
-        const requestedCategoryId = String(f.get("categoryId") || editor.value?.categoryId || "");
+        const requestedCategoryId = String(
+          f.get("categoryId") || editor.value?.categoryId || "",
+        );
         update((v) => {
-          const categoryId = v.categories.some((item) => item.id === requestedCategoryId)
+          const categoryId = v.categories.some(
+            (item) => item.id === requestedCategoryId,
+          )
             ? requestedCategoryId
             : v.categories[0]?.id || crypto.randomUUID();
           const categories = v.categories.length

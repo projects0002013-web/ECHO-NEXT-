@@ -1,37 +1,29 @@
-# Validation — 2026-11-12
+# Validation — 2026-11-15
 
-Prepared and tested in the attached Linux cloud environment. These results describe this instance; no published snapshot or fresh-task restoration has been tested.
+These results describe commit-ready source in the managed Linux environment. They do not establish GitHub Actions, GitHub Pages, physical-device behavior or audible neural quality.
 
-| Check | Result |
-|---|---|
-| `bash scripts/setup-cloud.sh` | Passed, including a repeat installation using `npm ci`, build, tests and Capacitor sync |
-| Strict TypeScript and Vite production build | Passed; primary JavaScript approximately 346 kB / 103 kB gzip |
-| `npm test` | 18 passed across database and service suites; 0 failed, 0 skipped |
-| `npm run test:e2e` | 6 passed; 0 failed, 0 skipped |
-| Development server functional smoke | Passed: application opened and composer accepted input |
-| Android `assembleDebug` | Passed with JDK 21 and Android SDK 35; no AI model bundled |
-| Android `lintDebug` | Passed with 0 errors and 13 warnings in the app report |
-| `apksigner verify` | Passed for the final debug APK |
-| Connected Android devices | ADB list was empty; no physical-device tests executed |
+| Check                              | Result                                                 |
+| ---------------------------------- | ------------------------------------------------------ |
+| Strict TypeScript                  | Passed                                                 |
+| Unit tests                         | 76 passed across 7 files; 0 failed or skipped          |
+| Dependency audit                   | `npm audit --audit-level=moderate`: 0 vulnerabilities  |
+| Production build at `/`            | Passed                                                 |
+| Production build at `/ECHO-NEXT-/` | Passed                                                 |
+| Playwright at `/`                  | 14 passed; 0 failed or skipped on the final full rerun |
+| Playwright at `/ECHO-NEXT-/`       | 14 passed; 0 failed or skipped                         |
+| Android `assembleDebug`            | Passed with JDK 21 and Android SDK 35                  |
+| Android `lintDebug`                | Passed; 0 errors, 14 reported warnings                 |
+| APK signature verification         | Passed with the debug v2 signer                        |
 
-Browser scenarios cover phrase create/edit/delete, persistence after reload, favorites, category create/rename/delete, appearance and Russian language persistence, backup download and transactional restore, deletion, recorded clip capture/persistence, audio decoding into a playable media element, mobile widths, and production offline reload. Capture uses Chromium's synthetic microphone. Accessibility checks use axe WCAG A/AA tags on all five screens in light and dark themes and on a phrase dialog. They do not replace manual screen-reader or switch-control testing.
+Both final browser suites passed without retries. They cover the ordinary root path and the GitHub Pages `/ECHO-NEXT-/` prefix separately.
 
-The 13 Android lint warnings concern generated resource configurations, unused Capacitor resources, splash density/duplication and a legacy backup-rule recommendation. Backup is explicitly disabled with `allowBackup=false` and `fullBackupContent=false`; API 31+ extraction rules exclude application data from cloud backup and device transfer. The lint warning is retained rather than suppressed. OEM backup behavior still needs device verification.
+The debug APK is `android/app/build/outputs/apk/debug/app-debug.apk`, 20,258,437 bytes. Package `app.echo.communication`, version name `1.1.0`, version code `4`, minimum API 26, target/compile API 35. APK Signature Scheme v2 verification passed with the Android debug certificate. SHA-256: `6439dcbe400122bf97307267585b42b6cf3611d6da9dfc68b7ea1fe58fd884ab`.
 
-Final debug artifact: `android/app/build/outputs/apk/debug/app-debug.apk`, approximately 4.3 MB. Package `app.echo.communication`, version `0.1.0`, minimum Android 8/API 26, target/compile API 35.
+Automated browser scenarios cover responsive screens, phrase/category CRUD, IndexedDB persistence, settings, high contrast, backup, synthetic microphone capture, consented sample import/quality checking, routes, accessibility and production shell caching. Unit tests cover state validation and legacy defaults, explicit neural fallback behavior, Russian and Belarusian routing, preferences, model-cache inventory, targeted integrity repair, local-only cache misses, long neural text chunks, empty-output rejection, real-metric persistence, cancellation, partial/full ONNX-session release and voice-sample quality thresholds.
 
-SHA-256: `8f7564c5458976a38dde2828db93a6db3ba55b7c489308ce181903f1553e8eb8`.
+## Not verified
 
-## Not verified or not implemented
-
-- Real Android microphone capture, permission denial/regrant, audible native TTS, audio focus with other applications, Bluetooth/headset routing, background/resume and TalkBack on a physical device.
-- Audible browser TTS quality; service initialization/settings/cancellation are tested with controlled browser-engine substitutes. Installed device engines determine voice/language availability.
-- Personalized AI synthesis, model downloads, generated-audio cache, provider consent flow and inference performance. The provider contract and request validation exist; the UI is explicitly unavailable. See `AI-VOICE.md`.
-- iOS build, release signing, store submission, encrypted application database and cloud sync.
-- Manual accessibility audit and a broad Android/OEM compatibility matrix.
-
-The prepared development environment supports web development, browser tests and real APK builds. The application is a functional foundation and requires the device/release work above before being treated as a production release.
-
-## Reusable environment
-
-The environment draft contains `install_script` invoking `scripts/setup-cloud.sh` and `start_skill` with activation, startup, readiness and verification instructions. No new secrets or outbound domains were needed for the working setup. Review and save the environment settings, then Publish to make its snapshot available to future tasks. Draft persistence does not publish or validate restoration. Repository changes are committed locally; they have not been pushed.
+- Loading the real Kokoro or Supertonic weights in this environment, audible output, pronunciation, generation latency and peak memory. Hugging Face access is unavailable from the current network policy.
+- Real Android microphone capture, permission denial/regrant, audible native/neural TTS, offline model restore, audio focus, Bluetooth/headset routing, lifecycle, TalkBack, thermal behavior and OEM compatibility. No Android device is connected.
+- GitHub Actions artifacts are commit-specific. PR run `43686280652` was independently read from the public GitHub run page and succeeded for the earlier `79e2ae8` head; completion commits require their own green run before merge.
+- Production signing, Play Store submission, iOS, encrypted application storage and cloud sync.

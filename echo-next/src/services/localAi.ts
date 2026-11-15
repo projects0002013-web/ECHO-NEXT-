@@ -1,3 +1,9 @@
+import {
+  ModelIntegrityError,
+  verifyCachedResponse,
+  storeVerifiedResponse,
+  verifiedModelCache,
+} from "./modelIntegrity";
 import type { KokoroTTS } from "kokoro-js";
 
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
@@ -36,15 +42,24 @@ export type AIVoice = (typeof AI_VOICES)[number]["id"];
 const PREFERENCES_KEY = "echo-kokoro-preferences-v1";
 export function loadLocalAIPreferences(): { voice: AIVoice } {
   try {
-    const saved = JSON.parse(globalThis.localStorage?.getItem(PREFERENCES_KEY) || "null") as { voice?: unknown } | null;
-    return { voice: AI_VOICES.some((item) => item.id === saved?.voice) ? saved!.voice as AIVoice : "af_heart" };
+    const saved = JSON.parse(
+      globalThis.localStorage?.getItem(PREFERENCES_KEY) || "null",
+    ) as { voice?: unknown } | null;
+    return {
+      voice: AI_VOICES.some((item) => item.id === saved?.voice)
+        ? (saved!.voice as AIVoice)
+        : "af_heart",
+    };
   } catch {
     return { voice: "af_heart" };
   }
 }
 export function saveLocalAIPreferences(preferences: { voice: AIVoice }): void {
   try {
-    globalThis.localStorage?.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+    globalThis.localStorage?.setItem(
+      PREFERENCES_KEY,
+      JSON.stringify(preferences),
+    );
   } catch {
     // Storage can be disabled or full; speech generation must remain available.
   }
@@ -53,12 +68,43 @@ export function saveLocalAIPreferences(preferences: { voice: AIVoice }): void {
 type Model = Awaited<ReturnType<typeof KokoroTTS.from_pretrained>>;
 let modelPromise: Promise<Model> | undefined;
 let modelReady = false;
+let generationController = new AbortController();
+let generationQueue: Promise<unknown> = Promise.resolve();
 const INSTALL_KEY = "echo-kokoro-installed-v1";
+
+export function startLocalAIGeneration(): AbortSignal {
+  generationController.abort();
+  generationController = new AbortController();
+  return generationController.signal;
+}
+
+export function cancelLocalAIGeneration(): void {
+  generationController.abort();
+}
+
+export async function disposeLocalAIModel(model: Model): Promise<void> {
+  await model.model.dispose();
+}
+
+/** Frees the Kokoro ONNX session but retains verified files for offline reload. */
+export async function releaseLocalAIMemory(): Promise<void> {
+  cancelLocalAIGeneration();
+  await generationQueue.catch(() => undefined);
+  generationQueue = Promise.resolve();
+  const pending = modelPromise;
+  modelPromise = undefined;
+  modelReady = false;
+  const model = await pending?.catch(() => undefined);
+  if (model) await disposeLocalAIModel(model);
+}
 
 /** True only after the user explicitly loaded the model successfully once. */
 export function hasLocalAIInstallConsent(): boolean {
-  try { return globalThis.localStorage?.getItem(INSTALL_KEY) === "1"; }
-  catch { return false; }
+  try {
+    return globalThis.localStorage?.getItem(INSTALL_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
 /** True when Kokoro is loaded in this page session. */
@@ -67,21 +113,61 @@ export function isLocalAIReady(): boolean {
 }
 
 /** Explicitly lazy: model downloads only after the user clicks Load AI. */
-export async function loadLocalAI(): Promise<Model> {
+export async function loadLocalAI(
+  options: {
+    localOnly?: boolean;
+    onProgress?: (progress: number) => void;
+  } = {},
+): Promise<Model> {
   if (!modelPromise) {
-    modelPromise = import("kokoro-js").then(async ({ KokoroTTS }) => {
-      const model = await KokoroTTS.from_pretrained(MODEL_ID, {
-        dtype: "q8",
-        device: "wasm",
+    modelPromise = import("kokoro-js")
+      .then(async ({ KokoroTTS }) => {
+        const { env } = await import("@huggingface/transformers");
+        if (typeof caches === "undefined")
+          throw new Error("Local model storage is unavailable.");
+        env.allowLocalModels = false;
+        env.allowRemoteModels = true;
+        env.useCustomCache = true;
+        let writeError: unknown;
+        env.customCache = verifiedModelCache(
+          await caches.open("transformers-cache"),
+          !!options.localOnly,
+          (error) => {
+            writeError = error;
+          },
+        );
+        // kokoro-js fetches styles separately from Transformers. Preload them only
+        // on explicit installation; restoration validates the selected saved style.
+        const voices = options.localOnly
+          ? [loadLocalAIPreferences().voice]
+          : AI_VOICES.map((v) => v.id);
+        for (const voice of voices)
+          await ensureKokoroVoice(voice, !!options.localOnly);
+        const model = await KokoroTTS.from_pretrained(MODEL_ID, {
+          dtype: "q8",
+          device: "wasm",
+          progress_callback: (progress) => {
+            if (progress.status === "progress")
+              options.onProgress?.(progress.progress);
+          },
+        });
+        if (writeError) {
+          await model.model.dispose();
+          throw writeError;
+        }
+        modelReady = true;
+        try {
+          globalThis.localStorage?.setItem(INSTALL_KEY, "1");
+        } catch {
+          /* model still works this session */
+        }
+        return model;
+      })
+      .catch((error: unknown) => {
+        modelPromise = undefined; // Retry possible after interrupted download.
+        modelReady = false;
+        throw error;
       });
-      modelReady = true;
-      try { globalThis.localStorage?.setItem(INSTALL_KEY, "1"); } catch { /* model still works this session */ }
-      return model;
-    }).catch((error: unknown) => {
-      modelPromise = undefined; // Retry possible after interrupted download.
-      modelReady = false;
-      throw error;
-    });
   }
   return modelPromise;
 }
@@ -95,18 +181,65 @@ export function validateAIText(value: string): string {
   if (!text || text.length > 400)
     throw new Error("Enter 1–400 English characters.");
   if (/[\u0400-\u04FF\u0370-\u03FF]/u.test(text))
-    throw new Error("This AI model supports English only. Use system TTS for Russian, Kazakh, or Belarusian.");
+    throw new Error(
+      "This AI model supports English only. Use system TTS for Russian, Kazakh, or Belarusian.",
+    );
   return text;
 }
 
 /** True neural TTS — output is generated audio, never a stored recording. */
-export async function synthesizeLocalAI(value: string, voice: AIVoice, speed = 1): Promise<Blob> {
+export async function synthesizeLocalAI(
+  value: string,
+  voice: AIVoice,
+  speed = 1,
+): Promise<Blob> {
   const text = validateAIText(value);
   if (!AI_VOICES.some((v) => v.id === voice))
     throw new Error("Unknown AI voice.");
-  const model = await loadLocalAI();
-  const audio = await model.generate(text, { voice, speed: normalizeLocalAISpeed(speed) });
-  const blob = audio.toBlob();
-  if (!blob.size) throw new Error("The AI model returned empty audio.");
-  return blob;
+  const signal = startLocalAIGeneration();
+  const generate = async () => {
+    signal.throwIfAborted();
+    const model = await loadLocalAI({ localOnly: true });
+    signal.throwIfAborted();
+    await ensureKokoroVoice(voice, true);
+    signal.throwIfAborted();
+    const audio = await model.generate(text, {
+      voice,
+      speed: normalizeLocalAISpeed(speed),
+    });
+    signal.throwIfAborted();
+    const blob = audio.toBlob();
+    if (blob.size <= 44) throw new Error("The AI model returned empty audio.");
+    return blob;
+  };
+  const queued = generationQueue.catch(() => undefined).then(generate);
+  generationQueue = queued;
+  return queued;
+}
+
+/** Prevent kokoro-js from downloading an uncached style during speech. */
+export async function ensureKokoroVoice(
+  voice: AIVoice,
+  localOnly: boolean,
+): Promise<void> {
+  const key = `https://huggingface.co/${MODEL_ID}/resolve/main/voices/${voice}.bin`;
+  const cache = await caches.open("kokoro-voices");
+  const cached = await cache.match(key);
+  if (cached) {
+    try {
+      await verifyCachedResponse(cache, key, cached);
+      return;
+    } catch (error) {
+      if (localOnly || !(error instanceof ModelIntegrityError)) throw error;
+      await cache.delete(key);
+    }
+  }
+  if (localOnly)
+    throw new Error(
+      "This voice is not saved locally. Use Load AI model while online.",
+    );
+  const response = await fetch(key, { credentials: "omit" });
+  if (!response.ok)
+    throw new Error(`Voice download failed: ${response.status}`);
+  await storeVerifiedResponse(cache, key, response);
 }

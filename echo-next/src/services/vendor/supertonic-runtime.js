@@ -1,7 +1,10 @@
+import { ModelIntegrityError, verifyCachedResponse, storeVerifiedResponse } from "../modelIntegrity";
 import * as ort from 'onnxruntime-web';
 
 // Adapted from Supertone's archived Supertonic web example.
 // Model assets are cached locally after explicit user-initiated loading.
+let modelAccess = {};
+export function configureModelAccess(options) { modelAccess = options; }
 const SUPER_CACHE = "echo-supertonic-3-v1";
 async function fetchCached(input, init) {
   const url = String(input);
@@ -10,17 +13,25 @@ async function fetchCached(input, init) {
   }
   const cache = await caches.open(SUPER_CACHE);
   const cached = await cache.match(url);
-  if (cached?.ok) return cached;
+  if (cached?.ok) {
+    try {
+      return await verifyCachedResponse(cache, url, cached);
+    } catch (error) {
+      if (modelAccess.localOnly || !(error instanceof ModelIntegrityError)) throw error;
+      await cache.delete(url);
+    }
+  }
+  if (modelAccess.localOnly) throw new Error("Saved model files are missing. Choose Load model to download them explicitly.");
   if (cached) await cache.delete(url);
 
-  const response = await fetch(input, { ...init, mode: "cors", credentials: "omit" });
+  const response = await fetch(input, { ...init, signal: modelAccess.signal, mode: "cors", credentials: "omit" });
   if (!response.ok) throw new Error(`Model asset request failed (${response.status}): ${url}`);
 
   // Do not report a successful install unless the downloaded file was really
   // committed to persistent browser storage. A swallowed quota error here
   // previously made the engine work only until the app was restarted.
   try {
-    await cache.put(url, response.clone());
+    await storeVerifiedResponse(cache, url, response);
     const saved = await cache.match(url);
     if (!saved?.ok) throw new Error("Cache Storage did not return the saved model file.");
   } catch (error) {
@@ -466,6 +477,10 @@ export async function loadOnnx(onnxPath, options) {
     return session;
 }
 
+export async function releaseInferenceSessions(sessions) {
+    await Promise.allSettled(sessions.map(session => session?.release?.()));
+}
+
 /**
  * Load all TTS components
  */
@@ -487,26 +502,30 @@ export async function loadTextToSpeech(onnxDir, sessionOptions = {}, progressCal
     ];
     
     const sessions = [];
-    for (let i = 0; i < modelPaths.length; i++) {
-        if (progressCallback) {
-            progressCallback(modelPaths[i].name, i + 1, modelPaths.length);
+    try {
+        for (let i = 0; i < modelPaths.length; i++) {
+            if (progressCallback) {
+                progressCallback(modelPaths[i].name, i + 1, modelPaths.length);
+            }
+            const session = await loadOnnx(modelPaths[i].path, sessionOptions);
+            sessions.push(session);
         }
-        const session = await loadOnnx(modelPaths[i].path, sessionOptions);
-        sessions.push(session);
+        const [dpOrt, textEncOrt, vectorEstOrt, vocoderOrt] = sessions;
+        const textProcessor = await loadTextProcessor(onnxDir);
+        const textToSpeech = new TextToSpeech(cfgs, textProcessor, dpOrt, textEncOrt, vectorEstOrt, vocoderOrt);
+        return { textToSpeech, cfgs };
+    } catch (error) {
+        // WebGPU creation can fail after one or more large sessions exist.
+        // Release partial state before the caller retries with WASM.
+        await releaseInferenceSessions(sessions);
+        throw error;
     }
-    
-    const [dpOrt, textEncOrt, vectorEstOrt, vocoderOrt] = sessions;
-    
-    const textProcessor = await loadTextProcessor(onnxDir);
-    const textToSpeech = new TextToSpeech(cfgs, textProcessor, dpOrt, textEncOrt, vectorEstOrt, vocoderOrt);
-    
-    return { textToSpeech, cfgs };
 }
 
 /**
  * Chunk text into manageable segments
  */
-function chunkText(text, maxLen = 300) {
+export function chunkText(text, maxLen = 300) {
     if (typeof text !== 'string') {
         throw new Error(`chunkText expects a string, got ${typeof text}`);
     }
@@ -542,7 +561,7 @@ function chunkText(text, maxLen = 300) {
         }
     }
     
-    return chunks;
+    return chunks.flatMap(chunk => { const parts=[]; while(chunk.length>maxLen){let at=chunk.lastIndexOf(" ",maxLen);if(at<maxLen/2)at=maxLen;parts.push(chunk.slice(0,at));chunk=chunk.slice(at).trimStart();}if(chunk)parts.push(chunk);return parts; });
 }
 
 /**
