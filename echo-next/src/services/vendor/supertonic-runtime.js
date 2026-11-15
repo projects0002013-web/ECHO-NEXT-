@@ -1,6 +1,6 @@
 import { ModelIntegrityError, verifyCachedResponse, storeVerifiedResponse } from "../modelIntegrity";
 import * as ort from 'onnxruntime-web';
-import ortWasmUrl from "onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url";
+import ortWasmUrl from "../../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url";
 
 // Vite fingerprints assets, so ONNX Runtime's default relative filename lookup
 // cannot reliably find the emitted WASM file on static hosts such as Pages.
