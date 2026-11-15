@@ -2299,34 +2299,32 @@ export default function App() {
                       {t("About our project", "О нашем проекте")}
                     </summary>
                     <div style={{ paddingTop: "12px" }}>
-                      <p><strong>{t("Boss", "Босс")}:</strong> Ари ({t("surname unknown", "фамилию не знаю")})</p>
-                      <p><strong>{t("Assistant", "Помощник")}:</strong> Ерса</p>
+                      <p><strong>{t("Boss: Ari (surname not provided)", "Босс: Ари (фамилию не знаю)")}</strong></p>
+                      <p><strong>{t("Assistant: Ersa", "Помощник: Ерса")}</strong></p>
                       <p style={{ marginTop: "12px" }}>{t(
-                        "This is a project for people with speech difficulties. The idea is to make everyday communication easier. Many similar applications exist, but we aim to stand out through a wide variety of features.",
+                        "This project is for people with speech difficulties. Our idea is to make everyday life and communication easier. Many similar apps already exist, but ECHO aims to stand out through its range of features.",
                         "Это проект для людей с дефектами речи. Идея в том, чтобы облегчить им жизнь. Да, существует много похожих приложений и программ, но мы отличаемся разнообразием функций.",
                       )}</p>
-                      <p style={{ marginTop: "12px" }}>{t(
-                        "The project includes an offline voice mode and plans for a personalized online voice mode:",
-                        "В приложении предусмотрен офлайн-режим, а также планируется персонализированный онлайн-режим:",
+                      <p style={{ marginTop: "12px" }}><strong>{t(
+                        "ECHO is designed around two ways of using voice:",
+                        "В приложении предусмотрены два режима работы с голосом:",
+                      )}</strong></p>
+                      <p style={{ marginTop: "10px" }}><strong>{t(
+                        "1. Offline mode (without internet).",
+                        "1. Офлайн-режим (без интернета).",
+                      )}</strong> {t(
+                        "ECHO provides more than 30 available voice options across its local neural voice engines, not 30 separate AI models. Download the model once, choose a voice and use it offline. On a tested device, speech generation took approximately 3–7 seconds, but speed depends on the device and phrase length.",
+                        "В ECHO доступно более 30 вариантов нейросетевых голосов, а не 30 отдельных ИИ-моделей. Достаточно один раз скачать нужную модель, выбрать голос и пользоваться им без интернета. На протестированном устройстве синтез занимал примерно 3–7 секунд, но скорость зависит от устройства и длины фразы.",
                       )}</p>
-                      <ol style={{ marginTop: "8px", paddingInlineStart: "24px" }}>
-                        <li>
-                          <strong>{t("Offline mode (no internet)", "Офлайн-режим (без интернета)")}</strong>
-                          <p>{t(
-                            "ECHO offers more than 30 voice presets across installed AI voice engines (not 30 separate models). Download the necessary model once, choose a voice and use it without a network connection. During our testing, generating speech took about 3–7 seconds; speed depends on the device and phrase length.",
-                            "В ECHO доступно более 30 вариантов ИИ-голосов в нескольких голосовых движках (это не 30 отдельных моделей). Вы один раз скачиваете нужную модель, выбираете понравившийся голос и используете его без подключения к сети. Во время наших тестов обработка текста в звук занимала примерно 3–7 секунд; скорость зависит от устройства и длины фразы.",
-                          )}</p>
-                        </li>
-                        <li style={{ marginTop: "12px" }}>
-                          <strong>{t("Online mode — planned", "Онлайн-режим — в разработке")}</strong>
-                          <p>{t(
-                            "Our goal is to let users record a voice sample, give explicit permission to use it, and generate speech resembling their own voice so loved ones can hear a familiar voice. We hope to make setup possible with just 5–10 spoken words, but the quality and feasibility of this feature have not yet been confirmed. Personalized voice synthesis is not available in this release.",
-                            "В будущем вы сможете записать свой голос, дать разрешение на его использование, а ИИ будет синтезировать максимально похожий голос. Так родные и близкие смогут слышать именно ваш привычный голос. Мы хотим, чтобы для настройки хватало всего 5–10 слов, но эта возможность и качество результата ещё не подтверждены. В текущей версии персональный синтез голоса пока недоступен.",
-                          )}</p>
-                        </li>
-                      </ol>
+                      <p style={{ marginTop: "10px" }}><strong>{t(
+                        "2. Online mode (planned).",
+                        "2. Онлайн-режим (в планах).",
+                      )}</strong> {t(
+                        "Our goal is to let a person record their own voice, give explicit permission to use it, and have AI synthesize a similar voice so loved ones can hear something familiar. We hope to make setup possible from a short recording. This feature is not yet implemented, and a 5–10 word sample is not a verified requirement.",
+                        "Мы хотим, чтобы человек мог записать свой голос, дать разрешение на его использование, а ИИ создал похожую озвучку. Так родные и близкие смогут слышать привычный голос. В будущем мы хотим упростить настройку до короткого образца, возможно 5–10 слов. Сейчас эта функция ещё не реализована, а достаточность такого образца не подтверждена.",
+                      )}</p>
                       <p style={{ marginTop: "12px" }}>{t(
-                        "The app also has other features designed to make communication easier.",
+                        "The app also includes many other tools designed to make communication simpler.",
                         "Кроме того, в приложении есть множество других функций, которые упрощают общение.",
                       )}</p>
                       <a
