@@ -52,6 +52,10 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - name: Verify Cloudflare Pages compressed assets
+        run: |
+          npm run build:cloudflare
+          node --input-type=module -e 'import { readdir, readFile, stat } from "node:fs/promises"; const files = await readdir("dist/assets"); const wasm = files.filter((name) => name.endsWith(".wasm")); if (!wasm.length) throw new Error("No ONNX Runtime WASM assets found"); for (const name of wasm) { const size = (await stat("dist/assets/" + name)).size; console.log(name + ": " + (size / 1024 / 1024).toFixed(2) + " MiB"); if (size > 25 * 1024 * 1024) throw new Error(name + " exceeds Cloudflare Pages 25 MiB limit"); } const headers = await readFile("dist/_headers", "utf8"); if (!headers.includes("Content-Encoding: gzip") || !headers.includes("Content-Type: application/wasm")) throw new Error("Cloudflare WASM headers are missing");'
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
