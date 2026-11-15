@@ -40,22 +40,41 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
     language === "ru" ? ru : language === "be" ? be : en;
 
   useEffect(() => {
+    let active = true;
     void getSupertonicCacheStatus()
-      .then((stored) => {
+      .then(async (stored) => {
+        if (!active) return;
         setCacheStatus(stored);
-        if (stored.complete) setMessage(copy(
-          "All model files are saved on this device. Load the cached model; no download is needed.",
-          "Все файлы модели сохранены на устройстве. Загрузите сохранённую модель — повторное скачивание не требуется.",
-          "Усе файлы мадэлі захаваныя на прыладзе. Загрузі захаваную мадэль — паўторная загрузка не патрэбная."
-        ));
-        else if (stored.modelFilesCached > 0 || stored.voiceStylesCached > 0) setMessage(copy(
+        if (stored.complete) {
+          setStatus("loading");
+          setMessage(copy(
+            "Restoring your saved offline voice automatically…",
+            "Автоматически запускаем сохранённую офлайн-модель…",
+            "Аўтаматычна запускаем захаваную афлайн-мадэль…"
+          ));
+          try {
+            await loadSupertonic();
+            if (!active) return;
+            setStatus("ready");
+            setMessage(copy(
+              "Your saved offline voice is ready. No button or download needed.",
+              "Сохранённый офлайн-голос готов. Нажимать кнопку и скачивать заново не нужно.",
+              "Захаваны афлайн-голас гатовы. Не трэба націскаць кнопку або спампоўваць зноў."
+            ));
+          } catch (error) {
+            if (!active) return;
+            setStatus("error");
+            setMessage(error instanceof Error ? error.message : "Could not restore the saved model.");
+          }
+        } else if (stored.modelFilesCached > 0 || stored.voiceStylesCached > 0) setMessage(copy(
           `Local cache found: ${stored.modelFilesCached}/${stored.modelFilesTotal} model files and ${stored.voiceStylesCached}/${stored.voiceStylesTotal} voice styles. Only missing files will be downloaded.`,
           `Найдены сохранённые файлы: модель ${stored.modelFilesCached}/${stored.modelFilesTotal}, голоса ${stored.voiceStylesCached}/${stored.voiceStylesTotal}. Будут загружены только отсутствующие файлы.`,
           `Знойдзены захаваныя файлы: мадэль ${stored.modelFilesCached}/${stored.modelFilesTotal}, галасы ${stored.voiceStylesCached}/${stored.voiceStylesTotal}. Будуць загружаныя толькі адсутныя файлы.`
         ));
       })
-      .catch(() => setCacheStatus((current) => ({ ...current, available: false })));
+      .catch(() => { if (active) setCacheStatus((current) => ({ ...current, available: false })); });
     return () => {
+      active = false;
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     };
   }, []);
@@ -207,7 +226,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
       <label>
         {copy("Quality steps", "Шаги качества", "Крокі якасці")}
         <select aria-label={copy("Quality steps", "Шаги качества", "Крокі якасці")} value={steps} onChange={(event) => setPreferences((current) => ({ ...current, steps: Number(event.target.value) as 5 | 8 | 12 }))}>
-          <option value={5}>5 · Faster</option>
+          <option value={5}>5 · Fast (recommended)</option>
           <option value={8}>8 · Balanced</option>
           <option value={12}>12 · Higher quality</option>
         </select>
@@ -223,7 +242,7 @@ export default function SupertonicVoicePanel({ language }: { language: UILanguag
       )}</p>
       <div className="section-head">
         <button className="outline" type="button" disabled={status === "loading" || status === "generating" || !cacheStatus.available} onClick={() => void load()}>
-          {status === "loading" ? copy("Loading…", "Загрузка…", "Загрузка…") : cached ? copy("Load cached model", "Загрузить сохранённую модель", "Загрузіць захаваную мадэль") : hasPartialCache ? copy("Resume setup (missing files only)", "Продолжить установку (только недостающие файлы)", "Працягнуць усталяванне (толькі адсутныя файлы)") : copy("Download & load (~400 MB)", "Загрузить и открыть (~400 МБ)", "Загрузіць і адкрыць (~400 МБ)")}
+          {status === "loading" ? copy("Preparing…", "Подготовка…", "Падрыхтоўка…") : cached ? copy("Reload saved model", "Перезапустить модель", "Перазапусціць мадэль") : hasPartialCache ? copy("Resume setup (missing files only)", "Продолжить установку (только недостающие файлы)", "Працягнуць усталяванне (толькі адсутныя файлы)") : copy("Download & load (~400 MB)", "Загрузить и открыть (~400 МБ)", "Загрузіць і адкрыць (~400 МБ)")}
         </button>
         <button className="primary" type="button" disabled={status !== "ready" || !text.trim()} onClick={() => void generate()}>
           {status === "generating" ? copy("Generating…", "Генерация…", "Стварэнне…") : copy("Generate speech", "Создать речь", "Стварыць маўленне")}
