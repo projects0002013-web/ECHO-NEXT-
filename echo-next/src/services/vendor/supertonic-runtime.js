@@ -1,5 +1,13 @@
 import { ModelIntegrityError, verifyCachedResponse, storeVerifiedResponse } from "../modelIntegrity";
 import * as ort from 'onnxruntime-web';
+import ortWasmUrl from "onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm?url";
+
+// Vite fingerprints assets, so ONNX Runtime's default relative filename lookup
+// cannot reliably find the emitted WASM file on static hosts such as Pages.
+// Pin the exact same-version asset URL and use a single thread: this avoids
+// requiring a separate .mjs worker artifact and is more compatible with WebViews.
+ort.env.wasm.numThreads = 1;
+ort.env.wasm.wasmPaths = { wasm: ortWasmUrl };
 
 // Adapted from Supertone's archived Supertonic web example.
 // Model assets are cached locally after explicit user-initiated loading.
