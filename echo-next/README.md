@@ -1,4 +1,4 @@
-# ECHO NEXT 1.0.1
+# ECHO NEXT 1.1
 
 A local-first AAC application for adults. React 19, strict TypeScript, Vite, Tailwind CSS, Capacitor 7 and Android Java plugins power the browser and Android builds.
 
@@ -39,12 +39,12 @@ The debug APK is installable for testing, not a signed production release. For a
 - Five responsive screens: Home, Communicate, Voice Studio, Library, Settings.
 - Phrase and category creation, editing, deletion; category deletion confirmation; phrase ordering, search, favorites and spoken history.
 - IndexedDB persistence, schema version 1, validated transactional JSON restore, backup including audio, complete local data deletion.
-- Browser speech engine; native Android TTS with voice enumeration, language selection, rate, pitch, cancellation, audio focus, pause/shutdown handling. Only installed local voices can work offline.
+- Explicit emergency browser/device speech; native Android TTS with language selection, rate, pitch, cancellation, audio focus and lifecycle handling. It is not shown as an AI voice and is never a silent fallback from neural mode.
 - Browser MediaRecorder and native Android AAC recording with runtime microphone permission, denial errors, 60-second limit, pause cleanup, playback and deletion. Limit: 100 clips / 30 MB total raw audio.
 - Voice profiles, English/Russian/Belarusian interface and phrase languages, light/dark/system appearance, text and card sizing, reduced motion.
-- Optional local neural speech: Kokoro for English and Supertonic 3 for its 31 published languages, including Russian. Previously installed model files are restored from local cache without a network fallback. New downloads remain an explicit user action.
-- Supertonic Fast (5), Balanced (8) and Quality (12) inference modes, serialized generation, cancellation, style reuse, long-text chunking and measured generation time in the current session.
-- SHA-256 metadata detects later corruption of locally cached neural model files. Existing legacy caches are baselined in place; this local check is not an upstream signature.
+- Optional local neural speech: Kokoro for English and Supertonic 3 for its 31 published languages, including Russian. First use offers setup; downloads remain explicit. Complete installations auto-restore from local cache with visible progress.
+- Supertonic Fast (5, default), Balanced (8) and Quality (12) modes, serialized generation, latest-request cancellation, style reuse, long-text chunking, ONNX-session release and real per-device completed-generation metrics.
+- SHA-256 metadata detects later corruption of locally cached neural assets. Online repair removes only a damaged asset; offline restore never hides a network request. Existing legacy caches are baselined in place; this local check is not an upstream signature.
 - PWA manifest and versioned production shell cache; offline use after the initial successful installation/cache. Android packages the web assets for offline launch.
 - Keyboard controls, native modal focus trapping, focus styles, screen-reader labels, minimum touch targets, reduced motion and automated contrast checks.
 
@@ -62,7 +62,7 @@ See [validation report](docs/VALIDATION.md) for executed checks and physical-dev
 
 AI voice cloning is not implemented: recordings remain ordinary local audio clips and the UI requires owner consent before any future personalized synthesis. No AI model is bundled in the APK. Kokoro supports English in this integration; Supertonic's published list does not include Belarusian, so ECHO never labels Russian synthesis as Belarusian. See [model and language assessment](docs/ADDITIONAL-TTS-MODELS.md). Physical-device Android speech, recording, model download/restore, permissions, audio routing, TalkBack, backgrounding, memory/thermal behavior and OEM compatibility require verification before release. No iOS project or store deployment is included.
 
-Release details and known limits are recorded in [the 1.0.1 release notes](docs/RELEASE-1.0.1.md).
+Release details, model research and known limits are recorded in [the 1.1 release notes](docs/RELEASE-1.1.md).
 
 ## GitHub automation
 
