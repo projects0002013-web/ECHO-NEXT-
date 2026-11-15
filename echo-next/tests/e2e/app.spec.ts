@@ -630,3 +630,18 @@ test("mobile composer keeps voice selection and speaking controls easy to reach"
     "46px",
   );
 });
+
+test("Communicate offers explicit speech language and labels neural engines rather than device voice", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Communicate", exact: true }).click();
+  const composer = page.locator(".composer");
+  const language = composer.getByRole("combobox", { name: "Speech language" });
+  await expect(language).toHaveValue("auto");
+  await composer.getByRole("textbox", { name: "Message to speak" }).fill("привет");
+  await expect(language.locator("option:checked")).toContainText("RU");
+  await expect(composer.getByRole("button", { name: "Active speech engine. Open Voice Studio" })).toContainText(/Supertonic|Russian neural/);
+  await language.selectOption("be");
+  await expect(composer.getByRole("button", { name: "Active speech engine. Open Voice Studio" })).toContainText("Belarusian neural voice unavailable");
+  await language.selectOption("en");
+  await expect(composer.getByRole("button", { name: "Active speech engine. Open Voice Studio" })).toContainText(/Kokoro|Supertonic|English neural/);
+});
