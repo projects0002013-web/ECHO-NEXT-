@@ -72,6 +72,8 @@ import { isSupertonicModelCached } from "../services/supertonic";
 import { VoiceRecorder } from "../services/recorder";
 import { adaptiveSpeechSettings } from "../services/adaptiveSpeech";
 import { inspectVoiceSample } from "../services/voiceSample";
+import { resolveComposerSpeechLanguage, type ComposerLanguageChoice } from "../services/composerLanguage";
+import { loadSupertonicPreferences } from "../services/supertonic";
 import LocalAiVoicePanel from "./LocalAiVoicePanel";
 import SupertonicVoicePanel from "./SupertonicVoicePanel";
 type Page = "home" | "communicate" | "voice" | "library" | "settings";
@@ -143,7 +145,9 @@ export default function App() {
       action: () => void;
     } | null>(null),
     [audioUrl, setAudioUrl] = useState(""),
-    [showModelOffer, setShowModelOffer] = useState(false);
+    [showModelOffer, setShowModelOffer] = useState(false),
+    [composerLanguageChoice, setComposerLanguageChoice] = useState<ComposerLanguageChoice>("auto"),
+    [supertonicAvailable, setSupertonicAvailable] = useState<boolean | null>(null);
   const recorder = useRef(new VoiceRecorder()),
     stateRef = useRef(state),
     queue = useRef(Promise.resolve()),
@@ -527,7 +531,11 @@ export default function App() {
     setSpeaking(true);
     setNotice("");
     try {
-      await speech.speak(value, s, language);
+      await speech.speak(
+        value,
+        s,
+        language ?? resolveComposerSpeechLanguage(value, s.language, composerLanguageChoice),
+      );
       if (id === speakId.current)
         update((v) => ({
           ...v,
@@ -693,6 +701,37 @@ export default function App() {
       setRecordBusy(false);
     }
   }
+  useEffect(() => {
+    if (!ready || (page !== "home" && page !== "communicate")) return;
+    let active = true;
+    void isSupertonicModelCached().then((available) => {
+      if (active) setSupertonicAvailable(available);
+    }).catch(() => {
+      if (active) setSupertonicAvailable(false);
+    });
+    return () => { active = false; };
+  }, [ready, page]);
+  const composerLanguage = resolveComposerSpeechLanguage(text, s.language, composerLanguageChoice);
+  const neuralVoiceLabel = (language: "en" | "ru" | "be") => {
+    if (s.speechMode === "system") {
+      return activeVoice?.name || t("Emergency device voice", "Аварийный голос устройства");
+    }
+    if (language === "be") {
+      return t("Belarusian neural voice unavailable", "Белорусский нейроголос недоступен");
+    }
+    if (language === "ru") {
+      const style = loadSupertonicPreferences("ru").voice;
+      return supertonicAvailable === true
+        ? `Supertonic · Russian · ${style}`
+        : supertonicAvailable === null
+          ? t("Checking Russian neural voice…", "Проверка русского нейроголоса…")
+          : t("Install Supertonic for Russian", "Установите Supertonic для русского");
+    }
+    if (hasLocalAIInstallConsent()) return "Kokoro · English";
+    return supertonicAvailable === true
+      ? `Supertonic · English · ${loadSupertonicPreferences("en").voice}`
+      : t("Install an English neural voice", "Установите английский нейроголос");
+  };
   const nav: [Page, typeof Home, string][] = [
     ["home", Home, t("Home", "Главная")],
     ["communicate", MessageSquare, t("Communicate", "Общение")],
@@ -701,8 +740,7 @@ export default function App() {
     ["settings", SettingsIcon, t("Settings", "Настройки")],
   ];
   const activeVoice = voices.find((v) => v.id === s.voice);
-  const voiceLabel =
-    activeVoice?.name || t("Device default", "Системный голос");
+  const voiceLabel = neuralVoiceLabel(composerLanguage);
   const filteredSystemVoices = voices.filter(
     (v) =>
       (!voiceFilter || v.language === voiceFilter) &&
@@ -783,11 +821,26 @@ export default function App() {
           )}
         </p>
         <div className="composer-bottom">
-          <button className="voice-chip" onClick={() => go("voice")}>
-            <AudioLines size={17} />
-            <span>{voiceLabel}</span>
-            <ChevronDown size={14} />
-          </button>
+          <div className="composer-voice-controls">
+            <label className="composer-language">
+              <span>{t("Speech language", "Язык озвучки")}</span>
+              <select
+                aria-label={t("Speech language", "Язык озвучки")}
+                value={composerLanguageChoice}
+                onChange={(event) => setComposerLanguageChoice(event.target.value as ComposerLanguageChoice)}
+              >
+                <option value="auto">{t("Auto-detect", "Автоопределение")} · {composerLanguage.toUpperCase()}</option>
+                <option value="ru">{t("Russian", "Русский")}</option>
+                <option value="en">{t("English", "Английский")}</option>
+                <option value="be">{t("Belarusian", "Белорусский")}</option>
+              </select>
+            </label>
+            <button className="voice-chip" onClick={() => go("voice")} aria-label={t("Active speech engine. Open Voice Studio", "Активный движок. Открыть Студию голоса")}>
+              <AudioLines size={17} />
+              <span>{voiceLabel}</span>
+              <ChevronDown size={14} />
+            </button>
+          </div>
           <div className="composer-actions">
             <button
               className="icon"

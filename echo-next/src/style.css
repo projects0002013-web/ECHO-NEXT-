@@ -2694,3 +2694,51 @@ button:disabled {
     font-size: 0.71rem;
   }
 }
+
+/* 1.1.1: explicit composer speech-language selection and honest neural status. */
+.composer-voice-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.composer-language {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 120px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.composer-language select {
+  min-height: 38px;
+  max-width: 200px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+}
+.composer-voice-controls .voice-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(100%, 360px);
+  overflow: hidden;
+  text-align: left;
+}
+@media (max-width: 700px) {
+  .composer-voice-controls {
+    width: 100%;
+  }
+  .composer-language {
+    flex: 0 0 auto;
+  }
+  .composer-voice-controls .voice-chip {
+    flex: 1 1 160px;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
