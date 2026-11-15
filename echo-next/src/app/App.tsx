@@ -2551,7 +2551,13 @@ export default function App() {
   }
   async function saveEditor(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const f = new FormData(form);
+    // Read checkbox state from the live input element to keep favorites
+    // reliable across browser FormData implementations and rerenders.
+    const favoriteInput = form.elements.namedItem("favorite");
+    const isFavorite =
+      favoriteInput instanceof HTMLInputElement && favoriteInput.checked;
     try {
       if (editor?.kind === "phrase") {
         const requestedCategoryId = String(
@@ -2573,7 +2579,7 @@ export default function App() {
               text: String(f.get("text")).trim(),
               categoryId,
               language: f.get("language") as "en" | "ru" | "be",
-              favorite: f.get("favorite") === "on",
+              favorite: isFavorite,
               order: editor.value?.order ?? v.phrases.length,
             },
           );
