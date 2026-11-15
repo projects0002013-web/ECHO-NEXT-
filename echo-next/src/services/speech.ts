@@ -31,7 +31,8 @@ export function speechLocale(language: string): string {
   if (normalized.toLowerCase() === "ru") return "ru-RU";
   if (normalized.toLowerCase() === "be") return "be-BY";
   if (normalized.toLowerCase() === "en") return "en-US";
-  if (/^[a-z]{2,3}-[a-z0-9]{2,8}(?:-[a-z0-9]{2,8})*$/i.test(normalized)) return normalized;
+  if (/^[a-z]{2,3}-[a-z0-9]{2,8}(?:-[a-z0-9]{2,8})*$/i.test(normalized))
+    return normalized;
   return "en-US";
 }
 
@@ -39,6 +40,16 @@ export interface SpeechEngine {
   voices(): Promise<Voice[]>;
   speak(text: string, settings: Settings, language?: string): Promise<void>;
   stop(): Promise<void>;
+}
+
+export class NeuralVoiceUnavailableError extends Error {
+  constructor(language: string, cause?: unknown) {
+    super(
+      `No ready neural voice can speak ${language}. Install the matching offline model in Voice Studio or explicitly select the emergency device voice in Settings.`,
+      { cause },
+    );
+    this.name = "NeuralVoiceUnavailableError";
+  }
 }
 
 export class BrowserSpeech implements SpeechEngine {
@@ -54,7 +65,9 @@ export class BrowserSpeech implements SpeechEngine {
 
   async speak(text: string, s: Settings, language = s.language) {
     if (!("speechSynthesis" in globalThis)) {
-      throw new Error("Speech is unavailable in this browser. Try Android or a browser with text-to-speech support.");
+      throw new Error(
+        "Speech is unavailable in this browser. Try Android or a browser with text-to-speech support.",
+      );
     }
     speechSynthesis.cancel();
     const requestedLocale = speechLocale(language);
@@ -64,7 +77,9 @@ export class BrowserSpeech implements SpeechEngine {
       (v) => v.lang.toLowerCase().split("-")[0] === requestedLanguage,
     );
     if (matchingVoices.length === 0) {
-      throw new Error(`No installed speech voice for ${requestedLocale}. Install that language pack or choose another language.`);
+      throw new Error(
+        `No installed speech voice for ${requestedLocale}. Install that language pack or choose another language.`,
+      );
     }
     return new Promise<void>((resolve, reject) => {
       const u = new SpeechSynthesisUtterance(text);
@@ -72,7 +87,10 @@ export class BrowserSpeech implements SpeechEngine {
       u.rate = s.rate;
       u.pitch = s.pitch;
       const selectedVoice = matchingVoices.find((v) => v.voiceURI === s.voice);
-      const voice = selectedVoice ?? matchingVoices.find((v) => v.localService) ?? matchingVoices[0];
+      const voice =
+        selectedVoice ??
+        matchingVoices.find((v) => v.localService) ??
+        matchingVoices[0];
       if (voice) u.voice = voice;
       u.onend = () => resolve();
       u.onerror = (e) =>
@@ -90,7 +108,13 @@ export class BrowserSpeech implements SpeechEngine {
 
 interface NativeSpeech {
   getVoices(): Promise<{ voices: Voice[] }>;
-  speak(o: { text: string; language: string; voice: string; rate: number; pitch: number }): Promise<void>;
+  speak(o: {
+    text: string;
+    language: string;
+    voice: string;
+    rate: number;
+    pitch: number;
+  }): Promise<void>;
   stop(): Promise<void>;
 }
 const native = registerPlugin<NativeSpeech>("EchoSpeech");
@@ -146,19 +170,26 @@ function playGeneratedAudio(blob: Blob): Promise<void> {
       else resolve();
     };
     const onEnded = () => finish();
-    const onError = () => finish(new Error("Generated speech audio could not be played on this device."));
+    const onError = () =>
+      finish(
+        new Error("Generated speech audio could not be played on this device."),
+      );
     const stop = () => finish();
 
     stopActiveAudio = stop;
     player.addEventListener("ended", onEnded, { once: true });
     player.addEventListener("error", onError, { once: true });
     void player.play().catch((error: unknown) => {
-      finish(error instanceof Error ? error : new Error("Audio playback was blocked."));
+      finish(
+        error instanceof Error
+          ? error
+          : new Error("Audio playback was blocked."),
+      );
     });
   });
 }
 
-class HybridSpeech implements SpeechEngine {
+export class HybridSpeech implements SpeechEngine {
   constructor(private readonly system: SpeechEngine) {}
 
   voices() {
@@ -178,7 +209,9 @@ class HybridSpeech implements SpeechEngine {
     const installedSystemVoices = await this.system.voices().catch(() => []);
     const systemVoiceAvailable =
       installedSystemVoices.length === 0 ||
-      installedSystemVoices.some((voice) => voice.language.toLowerCase().split("-")[0] === languageCode);
+      installedSystemVoices.some(
+        (voice) => voice.language.toLowerCase().split("-")[0] === languageCode,
+      );
 
     // No cloud provider is configured yet. Do not mistake a network connection
     // for an available online TTS service.
@@ -194,12 +227,17 @@ class HybridSpeech implements SpeechEngine {
       kokoroInstalled,
       systemVoiceAvailable,
       modePreference: settings.speechMode,
-      preferredOfflineEngine: settings.speechMode === "system" ? "system" : undefined,
+      preferredOfflineEngine:
+        settings.speechMode === "system" ? "system" : undefined,
     });
+
+    if (route.engine === "system" && settings.speechMode !== "system") {
+      throw new NeuralVoiceUnavailableError(locale);
+    }
 
     if (route.engine === "kokoro") {
       try {
-        if (!isLocalAIReady()) await loadLocalAI({localOnly:true});
+        if (!isLocalAIReady()) await loadLocalAI({ localOnly: true });
         if (!isCurrentRequest()) return;
         const { voice } = loadLocalAIPreferences();
         const audio = await synthesizeLocalAI(
@@ -210,19 +248,24 @@ class HybridSpeech implements SpeechEngine {
         if (!isCurrentRequest()) return;
         await playGeneratedAudio(audio);
         return;
-      } catch {
-        // A browser cache may have been cleared since installation. Preserve
-        // communication by falling back to the device's speech engine.
+      } catch (error) {
+        if (isCurrentRequest())
+          throw new NeuralVoiceUnavailableError(locale, error);
       }
       if (!isCurrentRequest()) return;
     }
 
     if (route.engine === "supertonic") {
       try {
-        const supported = SUPERTONIC_LANGUAGES.some(([code]) => code === languageCode);
-        if (!supported) throw new Error("Supertonic does not support this language.");
-        const prefs = loadSupertonicPreferences(languageCode as SupertonicLanguage);
-        await loadSupertonic(undefined,{localOnly:true});
+        const supported = SUPERTONIC_LANGUAGES.some(
+          ([code]) => code === languageCode,
+        );
+        if (!supported)
+          throw new Error("Supertonic does not support this language.");
+        const prefs = loadSupertonicPreferences(
+          languageCode as SupertonicLanguage,
+        );
+        await loadSupertonic(undefined, { localOnly: true });
         if (!isCurrentRequest()) return;
         const audio = await synthesizeSupertonic(
           clean,
@@ -235,14 +278,19 @@ class HybridSpeech implements SpeechEngine {
         if (!isCurrentRequest()) return;
         await playGeneratedAudio(audio);
         return;
-      } catch {
-        // If a cached model cannot initialize on this device, use system TTS.
+      } catch (error) {
+        if (isCurrentRequest())
+          throw new NeuralVoiceUnavailableError(locale, error);
       }
       if (!isCurrentRequest()) return;
     }
 
     if (isCurrentRequest()) {
-      await this.system.speak(clean, adaptiveSpeechSettings(clean, settings), language);
+      await this.system.speak(
+        clean,
+        adaptiveSpeechSettings(clean, settings),
+        language,
+      );
     }
   }
 
@@ -255,7 +303,9 @@ class HybridSpeech implements SpeechEngine {
 }
 
 const systemSpeech: SpeechEngine =
-  Capacitor.getPlatform() === "android" ? new AndroidSpeech() : new BrowserSpeech();
+  Capacitor.getPlatform() === "android"
+    ? new AndroidSpeech()
+    : new BrowserSpeech();
 
 /**
  * Main ECHO speech entry point. It prefers already-installed offline neural

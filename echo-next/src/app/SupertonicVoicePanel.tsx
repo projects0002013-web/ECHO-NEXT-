@@ -6,6 +6,7 @@ import {
   loadSupertonic,
   modelStorageEstimate,
   removeSupertonicModel,
+  releaseSupertonicMemory,
   SUPERTONIC_LANGUAGES,
   SUPERTONIC_VOICES,
   synthesizeSupertonic,
@@ -15,6 +16,12 @@ import {
   loadSupertonicPreferences,
   saveSupertonicPreferences,
 } from "../services/supertonic";
+import {
+  loadVoiceMetrics,
+  modeForSteps,
+  recordVoiceMetric,
+  summarizeVoiceMetrics,
+} from "../services/voiceMetrics";
 
 type UILanguage = "en" | "ru" | "be";
 type Status = "idle" | "loading" | "ready" | "generating" | "error";
@@ -38,6 +45,7 @@ export default function SupertonicVoicePanel({
   const [message, setMessage] = useState("");
   const [progress, setProgress] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
+  const [metrics, setMetrics] = useState(loadVoiceMetrics);
   const [cacheStatus, setCacheStatus] = useState<SupertonicCacheStatus>({
     available: true,
     modelFilesCached: 0,
@@ -78,9 +86,16 @@ export default function SupertonicVoicePanel({
             ),
           );
           try {
-            await loadSupertonic(undefined, { localOnly: true });
+            await loadSupertonic(
+              (name, current, total) => {
+                if (!active || id !== operation.current) return;
+                setProgress(`${current}/${total} · ${name}`);
+              },
+              { localOnly: true },
+            );
             if (!active || id !== operation.current) return;
             setStatus("ready");
+            setProgress("");
             setMessage(
               copy(
                 "Your saved offline voice is ready. No button or download needed.",
@@ -91,6 +106,7 @@ export default function SupertonicVoicePanel({
           } catch (error) {
             if (!active || id !== operation.current) return;
             setStatus("error");
+            setProgress("");
             setMessage(
               error instanceof Error
                 ? error.message
@@ -113,6 +129,7 @@ export default function SupertonicVoicePanel({
     return () => {
       active = false;
       operation.current++;
+      void releaseSupertonicMemory();
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     };
   }, []);
@@ -235,6 +252,16 @@ export default function SupertonicVoicePanel({
         },
       );
       if (id !== operation.current) return;
+      const elapsedMs = performance.now() - started;
+      setMetrics(
+        recordVoiceMetric({
+          mode: modeForSteps(steps),
+          elapsedMs,
+          textCharacters: text.trim().length,
+          audioBytes: blob.size,
+          recordedAt: Date.now(),
+        }),
+      );
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
       const url = URL.createObjectURL(blob);
       urlRef.current = url;
@@ -246,7 +273,7 @@ export default function SupertonicVoicePanel({
           "Speech generated on this device.",
           "Речь создана на этом устройстве.",
           "Маўленне створанае на гэтай прыладзе.",
-        ) + ` ${((performance.now() - started) / 1000).toFixed(2)} s`,
+        ) + ` ${(elapsedMs / 1000).toFixed(2)} s`,
       );
     } catch (error) {
       if (id !== operation.current) return;
@@ -602,6 +629,29 @@ export default function SupertonicVoicePanel({
       <p className="field-note" role="status" aria-live="polite">
         {message}
       </p>
+      {summarizeVoiceMetrics(metrics).length > 0 && (
+        <p
+          className="field-note"
+          aria-label={copy(
+            "Measured generation performance",
+            "Измеренная скорость генерации",
+            "Вымераная хуткасць генерацыі",
+          )}
+        >
+          {copy(
+            "Measured on this device",
+            "Измерено на этом устройстве",
+            "Вымерана на гэтай прыладзе",
+          )}
+          :{" "}
+          {summarizeVoiceMetrics(metrics)
+            .map(
+              (metric) =>
+                `${metric.mode} ${metric.averageMs} ms · ${metric.charactersPerSecond} chars/s (${metric.samples})`,
+            )
+            .join(" · ")}
+        </p>
+      )}
       {audioUrl && (
         <audio
           ref={audioRef}

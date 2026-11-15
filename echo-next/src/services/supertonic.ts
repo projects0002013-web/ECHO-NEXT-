@@ -134,6 +134,13 @@ export function cancelSupertonicOperations() {
   downloadController.abort();
   generationController.abort();
 }
+
+/** Starts a latest-request-wins generation and exposes its cancellation signal. */
+export function startSupertonicGeneration(): AbortSignal {
+  generationController.abort();
+  generationController = new AbortController();
+  return generationController.signal;
+}
 let enginePromise: Promise<{ tts: any; runtime: Runtime }> | undefined;
 const voiceStylePromises = new Map<SupertonicVoice, Promise<any>>();
 
@@ -280,9 +287,7 @@ export async function synthesizeSupertonic(
     speed > 1.8
   )
     throw new Error("Invalid speech speed or quality mode.");
-  generationController.abort();
-  generationController = new AbortController();
-  const signal = generationController.signal;
+  const signal = startSupertonicGeneration();
   const generate = async () => {
     signal.throwIfAborted();
     const { tts, runtime } = await loadSupertonic(undefined, {
@@ -375,15 +380,25 @@ export async function isSupertonicModelCached(): Promise<boolean> {
   return (await getSupertonicCacheStatus()).complete;
 }
 
-export async function removeSupertonicModel(): Promise<void> {
+export async function releaseSupertonicSessions(tts: any): Promise<void> {
+  for (const key of ["dpOrt", "textEncOrt", "vectorEstOrt", "vocoderOrt"])
+    await tts?.[key]?.release?.();
+}
+
+/** Releases large ONNX sessions while leaving verified model files on device. */
+export async function releaseSupertonicMemory(): Promise<void> {
   cancelSupertonicOperations();
-  const loaded = await enginePromise?.catch(() => undefined);
-  if (loaded)
-    for (const key of ["dpOrt", "textEncOrt", "vectorEstOrt", "vocoderOrt"])
-      await loaded.tts[key]?.release();
-  if (typeof caches !== "undefined")
-    await caches.delete("echo-supertonic-3-v1");
+  const pending = enginePromise;
   enginePromise = undefined;
   runtimePromise = undefined;
   voiceStylePromises.clear();
+  generationQueue = Promise.resolve();
+  const loaded = await pending?.catch(() => undefined);
+  if (loaded) await releaseSupertonicSessions(loaded.tts);
+}
+
+export async function removeSupertonicModel(): Promise<void> {
+  await releaseSupertonicMemory();
+  if (typeof caches !== "undefined")
+    await caches.delete("echo-supertonic-3-v1");
 }

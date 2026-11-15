@@ -1,14 +1,22 @@
 import { it, expect, vi, afterEach } from "vitest";
-import { BrowserSpeech, speechLocale } from "../src/services/speech";
+import {
+  BrowserSpeech,
+  HybridSpeech,
+  NeuralVoiceUnavailableError,
+  speechLocale,
+} from "../src/services/speech";
 import { VoiceRecorder } from "../src/services/recorder";
 import { initialState } from "../src/database/store";
 import { validateVoiceRequest } from "../src/services/ai";
 import { adaptiveSpeechSettings } from "../src/services/adaptiveSpeech";
 import {
   adaptiveSupertonicSpeed,
+  cancelSupertonicOperations,
   getSupertonicCacheStatus,
   loadSupertonicPreferences,
+  releaseSupertonicSessions,
   saveSupertonicPreferences,
+  startSupertonicGeneration,
 } from "../src/services/supertonic";
 import {
   AI_VOICES,
@@ -159,6 +167,28 @@ it("reports unavailable Cache Storage instead of pretending offline files exist"
     complete: false,
   });
 });
+it("cancels an older Supertonic generation and the active operation", () => {
+  const first = startSupertonicGeneration();
+  const second = startSupertonicGeneration();
+  expect(first.aborted).toBe(true);
+  expect(second.aborted).toBe(false);
+  // Starting a third request is the same cancellation path used by the UI.
+  const third = startSupertonicGeneration();
+  expect(second.aborted).toBe(true);
+  expect(third.aborted).toBe(false);
+  cancelSupertonicOperations();
+  expect(third.aborted).toBe(true);
+});
+it("releases every Supertonic ONNX inference session", async () => {
+  const releases = Array.from({ length: 4 }, () => vi.fn());
+  await releaseSupertonicSessions({
+    dpOrt: { release: releases[0] },
+    textEncOrt: { release: releases[1] },
+    vectorEstOrt: { release: releases[2] },
+    vocoderOrt: { release: releases[3] },
+  });
+  for (const release of releases) expect(release).toHaveBeenCalledOnce();
+});
 it("clamps Kokoro speaking speed to the supported range", () => {
   expect(normalizeLocalAISpeed(0.1)).toBe(0.5);
   expect(normalizeLocalAISpeed(1.25)).toBe(1.25);
@@ -264,6 +294,38 @@ it("chooses an installed Belarusian browser voice when available", async () => {
   await engine.speak("Добры дзень", initialState().settings, "be");
   expect(utterance.lang).toBe("be-BY");
   expect(utterance.voice.name).toBe("Belarusian");
+});
+it("never silently substitutes the system voice when neural speech is unavailable", async () => {
+  const system = {
+    voices: async () => [
+      { id: "en", name: "English", language: "en-US", local: true },
+    ],
+    speak: vi.fn(async () => undefined),
+    stop: vi.fn(async () => undefined),
+  };
+  vi.stubGlobal("caches", undefined);
+  vi.stubGlobal("localStorage", { getItem: () => null });
+  const engine = new HybridSpeech(system);
+  await expect(
+    engine.speak("Hello", { ...initialState().settings, speechMode: "auto" }),
+  ).rejects.toBeInstanceOf(NeuralVoiceUnavailableError);
+  expect(system.speak).not.toHaveBeenCalled();
+});
+it("uses the device voice only after the user explicitly selects the emergency mode", async () => {
+  const system = {
+    voices: async () => [
+      { id: "en", name: "English", language: "en-US", local: true },
+    ],
+    speak: vi.fn(async () => undefined),
+    stop: vi.fn(async () => undefined),
+  };
+  vi.stubGlobal("caches", undefined);
+  vi.stubGlobal("localStorage", { getItem: () => null });
+  await new HybridSpeech(system).speak("Hello", {
+    ...initialState().settings,
+    speechMode: "system",
+  });
+  expect(system.speak).toHaveBeenCalledOnce();
 });
 it("handles microphone permission denial with a useful error", async () => {
   vi.stubGlobal("navigator", {
