@@ -1200,12 +1200,11 @@ export default function App() {
           {page === "voice" && (
             <>
               <nav className="voice-engine-nav" aria-label={t("Voice engine shortcuts", "Быстрый переход к голосовым движкам")}>
-                <button type="button" onClick={() => jumpToVoiceEngine("system-voice-engine")}>{t("System TTS", "Системный голос")}</button>
                 <button type="button" onClick={() => jumpToVoiceEngine("recorded-voice-panel")}>{t("My recordings", "Мои записи")}</button>
                 <button type="button" onClick={() => jumpToVoiceEngine("kokoro-voice-engine")}>Kokoro</button>
                 <button type="button" onClick={() => jumpToVoiceEngine("supertonic-voice-engine")}>Supertonic</button>
               </nav>
-              <div className="voice-overview panel" id="system-voice-engine">
+              <div className="voice-overview panel" id="system-voice-engine" hidden>
                 <span className="large-wave">
                   <AudioLines size={36} />
                 </span>
@@ -1238,8 +1237,8 @@ export default function App() {
               </div>
               <div className="settings-grid">
                 <section className="panel">
-                  <h2>{t("Make it sound like you", "Звучание голоса")}</h2>
-                  <div className="system-voice-picker">
+                  <h2>{t("Speech settings", "Настройки речи")}</h2>
+                  <div className="system-voice-picker" hidden>
                     <div className="system-voice-tools">
                       <label className="system-voice-language">
                         {t("Voice language", "Язык голоса")}
@@ -1286,7 +1285,7 @@ export default function App() {
                       {voices.length > 0 && !filteredSystemVoices.length && <p className="system-voice-empty">{t("No voices match these filters. Try another language or reset the filters.", "Нет голосов по этим фильтрам. Выберите другой язык или сбросьте фильтры.")}</p>}
                     </div>
                   </div>
-                  <p className="field-note">
+                  <p className="field-note" hidden>
                     {voices.length
                       ? t(
                           "Only voices marked offline are guaranteed to work without a network. Install language packs in Android settings.",
