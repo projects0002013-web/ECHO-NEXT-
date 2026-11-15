@@ -12,7 +12,7 @@
     "android:sync": "npm run build && cap sync android",
     "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug",
     "typecheck": "tsc --noEmit",
-    "build:cloudflare": "tsc -b && vite build && node scripts/cache.mjs --cloudflare"
+    "build:cloudflare": "tsc -b && vite build --mode cloudflare && node scripts/cache.mjs --cloudflare"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",

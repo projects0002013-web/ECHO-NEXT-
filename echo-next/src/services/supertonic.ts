@@ -1,3 +1,4 @@
+import { prepareCloudflareWasm } from "./cloudflareWasm";
 export const SUPERTONIC_LANGUAGES = [
   ["en", "English"],
   ["ko", "Korean"],
@@ -202,6 +203,7 @@ export async function loadSupertonic(
   if (!enginePromise) {
     enginePromise = (async () => {
       downloadController = new AbortController();
+      await prepareCloudflareWasm();
       const runtime = await getRuntime();
       runtime.configureModelAccess({
         ...options,
