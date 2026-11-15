@@ -2230,6 +2230,28 @@ export default function App() {
                   </div>
                 </section>
                 <section className="panel">
+                  <h2>{t("About ECHO", "О проекте ECHO")}</h2>
+                  <p>
+                    {t(
+                      "ECHO is an accessible AAC communication app that helps people express everyday needs and thoughts using phrase cards, text and speech.",
+                      "ECHO — доступное AAC-приложение, которое помогает людям выражать повседневные потребности и мысли с помощью карточек, текста и озвучивания.",
+                    )}
+                  </p>
+                  <div className="about-details">
+                    <p><strong>{t("What you can do", "Возможности")}</strong></p>
+                    <ul>
+                      <li>{t("Create, organize and favorite communication cards.", "Создавать, упорядочивать и добавлять в избранное карточки общения.")}</li>
+                      <li>{t("Build sentences and speak them aloud.", "Составлять предложения и озвучивать их.")}</li>
+                      <li>{t("Use locally stored neural voices when their models are installed.", "Использовать локальные нейросетевые голоса после установки моделей.")}</li>
+                      <li>{t("Keep personal phrases and settings on this device and export backups.", "Хранить личные фразы и настройки на устройстве и создавать резервные копии.")}</li>
+                    </ul>
+                    <p><strong>{t("Designed for communication", "Создано для общения")}</strong></p>
+                    <p>{t("ECHO supports accessible controls, multiple interface languages and offline use of downloaded voice models. Available speech languages depend on the installed model.", "ECHO поддерживает доступное управление, несколько языков интерфейса и офлайн-использование загруженных голосовых моделей. Доступные языки озвучивания зависят от установленной модели.")}</p>
+                    <p><strong>{t("Version", "Версия")}: 1.1.0</strong></p>
+                    <p>{t("ECHO does not replace professional communication or medical support. Features and voice availability may vary by device.", "ECHO не заменяет профессиональную помощь в коммуникации или медицинскую поддержку. Возможности и доступность голосов могут различаться в зависимости от устройства.")}</p>
+                  </div>
+                </section>
+                <section className="panel">
                   <h2>
                     <ShieldCheck size={20} />
                     {t("Privacy & your data", "Приватность и данные")}
