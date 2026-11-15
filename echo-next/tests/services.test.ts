@@ -1,11 +1,123 @@
 import { it, expect, vi, afterEach } from "vitest";
-import { BrowserSpeech } from "../src/services/speech";
+import { BrowserSpeech, speechLocale } from "../src/services/speech";
 import { VoiceRecorder } from "../src/services/recorder";
 import { initialState } from "../src/database/store";
 import { validateVoiceRequest } from "../src/services/ai";
+import { adaptiveSpeechSettings } from "../src/services/adaptiveSpeech";
+import { adaptiveSupertonicSpeed, getSupertonicCacheStatus, loadSupertonicPreferences, saveSupertonicPreferences } from "../src/services/supertonic";
+import { AI_VOICES, loadLocalAIPreferences, saveLocalAIPreferences, normalizeLocalAISpeed } from "../src/services/localAi";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+});
+it("maps Belarusian to the correct BCP-47 voice locale", () => {
+  expect(speechLocale("be")).toBe("be-BY");
+  expect(speechLocale("ru")).toBe("ru-RU");
+  expect(speechLocale("en")).toBe("en-US");
+});
+
+it("preserves explicit regional voice locales for preview playback", () => {
+  expect(speechLocale("en-GB")).toBe("en-GB");
+  expect(speechLocale("ru-RU")).toBe("ru-RU");
+  expect(speechLocale("be-BY")).toBe("be-BY");
+  expect(speechLocale("pt_BR")).toBe("pt-BR");
+});
+it("keeps the configured system speech rate when adaptive pacing is off", () => {
+  const settings = { ...initialState().settings, rate: 1.2, adaptiveVoice: "off" as const };
+  expect(adaptiveSpeechSettings("A long sentence with many words.", settings).rate).toBe(1.2);
+});
+it("slows longer phrases conservatively when adaptive pacing is enabled", () => {
+  const settings = { ...initialState().settings, rate: 1, adaptiveVoice: "smart" as const };
+  expect(adaptiveSpeechSettings("This is a sentence with enough words to activate the adaptive pacing rule.", settings).rate).toBe(0.95);
+});
+it("adapts Supertonic speed within its supported range", () => {
+  expect(adaptiveSupertonicSpeed("A long sentence with many words that should be spoken more slowly.", 1, true)).toBe(0.95);
+  expect(adaptiveSupertonicSpeed("Hello!", 1, true)).toBe(1.02);
+  expect(adaptiveSupertonicSpeed("Hello.", 1, false)).toBe(1);
+});
+it("persists Supertonic voice preferences across component restarts", () => {
+  const storage = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+  });
+  const preferences = { voice: "M3" as const, language: "ru" as const, speed: 1.35, steps: 12 as const, adaptive: false };
+  saveSupertonicPreferences(preferences);
+  expect(loadSupertonicPreferences()).toEqual(preferences);
+});
+it("recovers safely from invalid Supertonic preferences", () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => "{invalid-json",
+    setItem: vi.fn(),
+  });
+  expect(loadSupertonicPreferences("ru")).toEqual({
+    voice: "F1", language: "ru", speed: 1, steps: 8, adaptive: true,
+  });
+});
+it("clamps corrupted Supertonic speed and ignores unknown voices", () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => JSON.stringify({ voice: "unknown", language: "xx", speed: 99, steps: 9, adaptive: false }),
+    setItem: vi.fn(),
+  });
+  expect(loadSupertonicPreferences()).toEqual({
+    voice: "F1", language: "en", speed: 1.8, steps: 8, adaptive: false,
+  });
+});
+it("reports exactly which Supertonic assets survived an app restart", async () => {
+  vi.stubGlobal("caches", {
+    open: async () => ({
+      match: async (url: string) => url.includes("duration_predictor.onnx") || url.includes("/F1.json") ? new Response("cached") : undefined,
+    }),
+  });
+  expect(await getSupertonicCacheStatus()).toEqual({
+    available: true,
+    modelFilesCached: 1,
+    modelFilesTotal: 6,
+    voiceStylesCached: 1,
+    voiceStylesTotal: 10,
+    complete: false,
+  });
+});
+it("recognizes a complete Supertonic cache after an app restart", async () => {
+  vi.stubGlobal("caches", {
+    open: async () => ({
+      match: async () => new Response("cached"),
+    }),
+  });
+  expect((await getSupertonicCacheStatus()).complete).toBe(true);
+});
+it("reports unavailable Cache Storage instead of pretending offline files exist", async () => {
+  vi.stubGlobal("caches", undefined);
+  expect(await getSupertonicCacheStatus()).toMatchObject({
+    available: false, modelFilesCached: 0, voiceStylesCached: 0, complete: false,
+  });
+});
+it("clamps Kokoro speaking speed to the supported range", () => {
+  expect(normalizeLocalAISpeed(0.1)).toBe(0.5);
+  expect(normalizeLocalAISpeed(1.25)).toBe(1.25);
+  expect(normalizeLocalAISpeed(3)).toBe(2);
+  expect(normalizeLocalAISpeed(Number.NaN)).toBe(1);
+});
+it("exposes the full supported Kokoro preset voice list", () => {
+  expect(AI_VOICES).toHaveLength(28);
+  expect(AI_VOICES.map((voice) => voice.id)).toContain("bf_lily");
+  expect(AI_VOICES.map((voice) => voice.id)).toContain("am_santa");
+});
+it("persists the selected Kokoro voice across app navigation and reload", () => {
+  const storage = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+  });
+  saveLocalAIPreferences({ voice: "bf_emma" });
+  expect(loadLocalAIPreferences()).toEqual({ voice: "bf_emma" });
+});
+it("recovers from corrupted Kokoro voice preferences", () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => "{invalid-json",
+    setItem: vi.fn(),
+  });
+  expect(loadLocalAIPreferences()).toEqual({ voice: "af_heart" });
 });
 it("reports an unavailable browser speech engine", async () => {
   const engine = new BrowserSpeech();
@@ -41,6 +153,31 @@ it("initializes voices, applies settings and cancels speech", async () => {
   expect(utterance.voice.name).toBe("Local");
   await engine.stop();
   expect(cancel).toHaveBeenCalledTimes(2);
+});
+it("does not silently use an English browser voice for Belarusian", async () => {
+  const speak = vi.fn();
+  vi.stubGlobal("speechSynthesis", {
+    getVoices: () => [{ voiceURI: "en", name: "English", lang: "en-US", localService: true }],
+    cancel: vi.fn(),
+    speak,
+  });
+  vi.stubGlobal("SpeechSynthesisUtterance", class { constructor(public text: string) {} });
+  const engine = new BrowserSpeech();
+  await expect(engine.speak("Добры дзень", initialState().settings, "be")).rejects.toThrow("be-BY");
+  expect(speak).not.toHaveBeenCalled();
+});
+it("chooses an installed Belarusian browser voice when available", async () => {
+  let utterance: any;
+  vi.stubGlobal("speechSynthesis", {
+    getVoices: () => [{ voiceURI: "be", name: "Belarusian", lang: "be-BY", localService: true }],
+    cancel: vi.fn(),
+    speak: (value: any) => { utterance = value; value.onend(); },
+  });
+  vi.stubGlobal("SpeechSynthesisUtterance", class { constructor(public text: string) {} });
+  const engine = new BrowserSpeech();
+  await engine.speak("Добры дзень", initialState().settings, "be");
+  expect(utterance.lang).toBe("be-BY");
+  expect(utterance.voice.name).toBe("Belarusian");
 });
 it("handles microphone permission denial with a useful error", async () => {
   vi.stubGlobal("navigator", {

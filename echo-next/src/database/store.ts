@@ -2,7 +2,9 @@ import { openDB } from "idb";
 import { z } from "zod";
 export const settingsSchema = z.object({
   theme: z.enum(["light", "dark", "system"]),
-  language: z.enum(["en", "ru"]),
+  language: z.enum(["en", "ru", "be"]),
+  adaptiveVoice: z.enum(["off", "smart"]).default("off"),
+  speechMode: z.enum(["auto", "system", "neural"]).default("auto"),
   rate: z.number().min(0.5).max(2),
   pitch: z.number().min(0.5).max(2),
   voice: z.string().max(500),
@@ -19,7 +21,7 @@ const phraseSchema = z.object({
   text: z.string().trim().min(1).max(2000),
   categoryId: z.string().max(100),
   favorite: z.boolean(),
-  language: z.enum(["en", "ru"]),
+  language: z.enum(["en", "ru", "be"]),
   order: z.number().int().nonnegative(),
 });
 const profileSchema = z.object({
@@ -98,7 +100,7 @@ export function initialState(): State {
           text,
           categoryId: `c${i}`,
           favorite: i === 0 && j < 3,
-          language: "en" as "en" | "ru",
+          language: "en" as "en" | "ru" | "be",
           order: j,
         })),
       )
@@ -119,11 +121,37 @@ export function initialState(): State {
           language: "ru",
           order: 4,
         },
+        {
+          id: "be-1",
+          text: "Добры дзень.",
+          categoryId: "c0",
+          favorite: false,
+          language: "be",
+          order: 7,
+        },
+        {
+          id: "be-2",
+          text: "Мне патрэбна дапамога.",
+          categoryId: "c1",
+          favorite: false,
+          language: "be",
+          order: 5,
+        },
+        {
+          id: "be-3",
+          text: "Дзякуй.",
+          categoryId: "c0",
+          favorite: false,
+          language: "be",
+          order: 8,
+        },
       ]),
     history: [],
     settings: {
       theme: "light",
       language: "en",
+      adaptiveVoice: "off",
+      speechMode: "auto",
       rate: 1,
       pitch: 1,
       voice: "",
@@ -148,7 +176,11 @@ export async function loadState(): Promise<State> {
 }
 export async function saveState(s: State) {
   const d = await db();
-  await d.put("state", stateSchema.parse(s), "current");
+  const tx = d.transaction("state", "readwrite");
+  await tx.store.put(stateSchema.parse(s), "current");
+  // Resolve only after IndexedDB confirms the transaction has committed.
+  // A request succeeding is not the same as the transaction being durable.
+  await tx.done;
 }
 export async function getClips(): Promise<Clip[]> {
   return (await db()).getAll("clips");

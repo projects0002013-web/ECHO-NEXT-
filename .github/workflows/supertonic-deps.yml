@@ -1,0 +1,46 @@
+name: Install Supertonic ONNX runtime
+on:
+  push:
+    branches: ['feature/belarusian-language-supertonic-model']
+    paths:
+      - '.github/workflows/supertonic-deps.yml'
+      - 'echo-next/src/app/SupertonicVoicePanel.tsx'
+      - 'echo-next/src/services/supertonic.ts'
+      - 'echo-next/src/services/vendor/supertonic-runtime.js'
+      - 'echo-next/src/services/adaptiveSpeech.ts'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  install-runtime:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: echo-next
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: echo-next/package-lock.json
+      - name: Install pinned ONNX Runtime Web
+        run: npm install --save-exact onnxruntime-web@1.31.1
+      - name: Verify application
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+          npm audit --audit-level=moderate
+      - name: Commit dependency and lockfile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "build(tts): add pinned ONNX Runtime Web for Supertonic"
+            git push origin HEAD:feature/belarusian-language-supertonic-model
+          fi

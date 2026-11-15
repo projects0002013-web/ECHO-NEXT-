@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   initialState,
+  stateSchema,
   saveState,
   loadState,
   upsertPhrase,
@@ -58,6 +59,35 @@ describe("local communication data", () => {
     const s = removeCategory(initialState(), "c0");
     expect(s.categories.some((c) => c.id === "c0")).toBe(false);
     expect(s.phrases.some((p) => p.categoryId === "c0")).toBe(false);
+  });
+  it("accepts and persists Belarusian interface and phrase language", async () => {
+    const s = initialState();
+    s.settings.language = "be";
+    s.phrases.push({
+      id: "be-test",
+      text: "Добры дзень.",
+      categoryId: "c0",
+      favorite: false,
+      language: "be",
+      order: 50,
+    });
+    await saveState(s);
+    const restored = await loadState();
+    expect(restored.settings.language).toBe("be");
+    expect(restored.phrases.find((p) => p.id === "be-test")?.language).toBe("be");
+  });
+  it("defaults the new speech mode when reading legacy saved data", () => {
+    const legacy = initialState();
+    const legacySettings = { ...legacy.settings };
+    Reflect.deleteProperty(legacySettings, "speechMode");
+    const restored = stateSchema.parse({ ...legacy, settings: legacySettings });
+    expect(restored.settings.speechMode).toBe("auto");
+  });
+  it("persists the selected speech engine mode", async () => {
+    const s = initialState();
+    s.settings.speechMode = "neural";
+    await saveState(s);
+    expect((await loadState()).settings.speechMode).toBe("neural");
   });
   it("persists theme and accessibility preferences", async () => {
     const s = initialState();

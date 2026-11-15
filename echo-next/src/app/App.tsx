@@ -14,6 +14,7 @@ import {
   Settings as SettingsIcon,
   ArrowUpRight,
   Volume2,
+  Play,
   Square,
   RotateCcw,
   Star,
@@ -63,7 +64,9 @@ import {
 } from "../database/store";
 import { speech, type Voice } from "../services/speech";
 import { VoiceRecorder } from "../services/recorder";
+import { adaptiveSpeechSettings } from "../services/adaptiveSpeech";
 import LocalAiVoicePanel from "./LocalAiVoicePanel";
+import SupertonicVoicePanel from "./SupertonicVoicePanel";
 type Page = "home" | "communicate" | "voice" | "library" | "settings";
 type Editor =
   | { kind: "phrase"; value?: Phrase }
@@ -138,8 +141,141 @@ export default function App() {
     lastText = useRef(""),
     audio = useRef<HTMLAudioElement>(null);
   const [voiceFilter, setVoiceFilter] = useState("");
-  const s = state.settings,
-    t = (en: string, ru: string) => (s.language === "ru" ? ru : en);
+  const [systemVoiceQuery, setSystemVoiceQuery] = useState("");
+  const [previewingSystemVoice, setPreviewingSystemVoice] = useState("");
+  const [systemVoiceAvailability, setSystemVoiceAvailability] = useState<"all" | "offline" | "online">("all");
+  const s = state.settings;
+  const be: Record<string, string> = {
+    "Voice engine shortcuts": "Хуткі пераход да галасавых рухавікоў",
+    "System TTS": "Сістэмны голас", "My recordings": "Мае запісы",
+    "General": "Агульнае", "Currently active": "Зараз выкарыстоўваецца",
+    "Tip: press Ctrl/⌘ + Enter to speak": "Падказка: Ctrl/⌘ + Enter — агучыць",
+    "Home": "Галоўная", "Communicate": "Зносіны", "Voice Studio": "Студыя голасу",
+    "Library": "Бібліятэка", "Settings": "Налады", "Device default": "Сістэмны голас",
+    "YOUR WORDS, OUT LOUD": "ТВАЕ СЛОВЫ ЎГОЛАС", "Message to speak": "Тэкст для агучвання",
+    "Clear text": "Ачысціць тэкст", "Repeat last speech": "Паўтарыць апошнюю фразу",
+    "Stop": "Спыніць", "Speak": "Прамовіць", "Search phrases": "Пошук фраз",
+    "Find a phrase…": "Знайсці фразу…", "Clear search": "Ачысціць пошук",
+    "All phrases": "Усе фразы", "Favorites": "Выбранае", "New phrase": "Новая фраза",
+    "Skip to content": "Перайсці да змесціва", "Workspace navigation": "Навігацыя па працоўнай прасторы",
+    "Main navigation": "Галоўная навігацыя", "Private by design": "Прыватнасць па змаўчанні",
+    "Your words stay with you.": "Твае словы застаюцца з табой.",
+    "Stored on this device": "Захоўваецца на гэтай прыладзе", "My workspace": "Мая прастора",
+    "Local storage": "Лакальнае сховішча", "Voice language": "Мова голасу",
+    "All languages": "Усе мовы", "System voice": "Сістэмны голас", "Preview voice": "Праслухаць голас",
+    "Speaking speed": "Хуткасць маўлення", "Pitch": "Вышыня тону",
+    "Voice profiles": "Галасавыя профілі", "Save profile": "Захаваць профіль",
+    "Recorded voice": "Запісаны голас", "Start recording": "Пачаць запіс",
+    "Stop & save": "Спыніць і захаваць", "Appearance & language": "Выгляд і мова",
+    "Appearance": "Выгляд", "Interface language": "Мова інтэрфейсу",
+    "Voice settings": "Налады голасу", "Accessibility": "Даступнасць",
+    "Text size": "Памер тэксту", "Phrase card spacing": "Памер картак",
+    "Comfortable": "Зручны", "Compact": "Кампактны", "Reduce motion": "Паменшыць анімацыю",
+    "Backup & restore": "Рэзервовая копія і аднаўленне", "Export backup": "Экспартаваць копію",
+    "Restore backup": "Аднавіць копію", "Privacy & your data": "Прыватнасць і твае даныя",
+    "Delete all personal data": "Выдаліць усе асабістыя даныя",
+    "A place for every conversation": "Месца для кожнай размовы",
+    "A space that works the way you do.": "Прастора, якая працуе так, як табе зручна.",
+    "A thought, a need, a conversation. Start with your words.": "Думка, патрэба, размова. Пачні са сваіх слоў.",
+    "A voice of your own. Always.": "Твой уласны голас. Заўсёды.",
+    "Add a phrase or try a different search.": "Дадай фразу або змяні пошукавы запыт.",
+    "Add favorite": "Дадаць у абранае",
+    "Backup restored.": "Рэзервовая копія адноўлена.",
+    "Changes could not be saved. Check available storage.": "Не ўдалося захаваць змены. Правер наяўнасць вольнага месца.",
+    "Clear spoken history?": "Ачысціць гісторыю маўлення?",
+    "Could not read recordings.": "Не ўдалося прачытаць запісы.",
+    "Could not read the local database. Reload or check browser storage permissions.": "Не ўдалося прачытаць лакальную базу даных. Абнаві старонку або правер дазволы на сховішча браўзера.",
+    "Create a category in the Library first.": "Спачатку ствары катэгорыю ў бібліятэцы.",
+    "Data could not be erased.": "Не ўдалося выдаліць даныя.",
+    "Find the right words. Let your voice do the rest.": "Знайдзі патрэбныя словы, а голас зробіць астатняе.",
+    "Find the voice that feels like you.": "Знайдзі голас, які табе падыходзіць.",
+    "Invalid backup or unavailable storage. Nothing was imported.": "Рэзервовая копія пашкоджаная або сховішча недаступнае. Даныя не імпартаваныя.",
+    "Keep a copy of your phrases, settings, profiles and recordings. Backups contain personal data; store them somewhere you trust.": "Захоўвай копію сваіх фраз, налад, профіляў і запісаў. Рэзервовыя копіі ўтрымліваюць асабістыя даныя — захоўвай іх у надзейным месцы.",
+    "Maximum backup size is 50 MB.": "Максімальны памер рэзервовай копіі — 50 МБ.",
+    "No account. No analytics. Personal phrases and audio stay in your local database. Browser storage can be cleared by the device; export regular backups.": "Без уліковага запісу і аналітыкі. Асабістыя фразы і аўдыя застаюцца ў лакальнай базе даных. Сховішча браўзера можа быць ачышчана прыладай — рэгулярна экспартуй рэзервовыя копіі.",
+    "Permanently erase all phrases, recordings and settings? This cannot be undone.": "Незваротна выдаліць усе фразы, запісы і налады? Гэта дзеянне нельга будзе адмяніць.",
+    "Recording storage limit reached (100 clips / 30 MB). Export a backup and delete older clips.": "Дасягнуты ліміт запісаў (100 файлаў / 30 МБ). Экспартуй рэзервовую копію і выдалі старыя запісы.",
+    "Remove favorite": "Выдаліць з абранага",
+    "Rename category": "Перайменаваць катэгорыю",
+    "Replace all local data with this backup?": "Замяніць усе лакальныя даныя гэтай рэзервовай копіяй?",
+    "Spoken phrases will appear here for a quick repeat.": "Тут будуць з'яўляцца агучаныя фразы для хуткага паўтору.",
+    "The words that matter, always within reach.": "Важныя словы заўсёды будуць пад рукой.",
+    "This change exceeds the data limits or contains invalid values.": "Гэта змяненне перавышае ліміт даных або змяшчае няправільныя значэнні.",
+    "What would you like to say?": "Што ты хочаш сказаць?",
+    "Your conversations begin here.": "Твае размовы пачынаюцца тут.",
+    "Your voice deserves to be heard, at your own pace.": "Твой голас заслугоўвае быць пачутым — у зручным для цябе тэмпе.",
+    "Your words. Your voice. Your independence.": "Твае словы. Твой голас. Твая незалежнасць.",
+    "My personal space": "Мая асабістая прастора",
+    "Recording name": "Назва запісу",
+    "Adaptive pacing": "Адаптыўны тэмп",
+    "Voice engine mode": "Рэжым галасавога рухавіка",
+    "Automatic": "Аўтаматычна",
+    "System voice only": "Толькі сістэмны голас",
+    "Installed neural voices": "Усталяваныя нейрасеткавыя галасы",
+    "Automatic uses an installed offline neural model when available; otherwise ECHO uses the device voice. No text is sent online in this version.": "Аўтаматычны рэжым выкарыстоўвае ўсталяваную лакальную нейрасеткавую мадэль, калі яна даступная; інакш ECHO выкарыстоўвае сістэмны голас. У гэтай версіі тэкст не адпраўляецца ў інтэрнэт.",
+    "Off": "Выключана",
+    "Smart pacing": "Разумны тэмп",
+    "Smart pacing gently adjusts speech rate for longer sentences and punctuation. It does not infer emotions.": "Разумны тэмп мякка змяняе хуткасць маўлення ў залежнасці ад даўжыні фразы і пунктуацыі. Эмоцыі не распазнаюцца.",
+    "Phrase language": "Мова фразы", "Phrase": "Фраза", "Category": "Катэгорыя",
+    "Add to favorites": "Дадаць у выбранае", "Name": "Назва", "Cancel": "Скасаваць",
+    "Save": "Захаваць", "Confirm": "Пацвердзіць", "Please confirm": "Пацвердзі дзеянне",
+    "Voice recording": "Запіс голасу",
+    "Recording saved on this device.": "Запіс захаваны на гэтай прыладзе.",
+    "A little space for your words": "Месца для тваіх слоў",
+    "A voice of your own": "Твой уласны голас",
+    "YOUR SPACE": "ТВАЯ ПРАСТОРА",
+    "YOUR EVERYDAY COMPANION": "ТВОЙ ШТОДЗЁННЫ ДАПАМОЖНІК",
+    "YOUR WORDS. YOUR WAY.": "ТВАЕ СЛОВЫ. ТВОЙ СПОСАБ.",
+    "Make yourself heard.": "Дапамажы іншым пачуць цябе.",
+    "Dismiss message": "Закрыць паведамленне",
+    "Your go-to phrases": "Твае асноўныя фразы",
+    "View all": "Паказаць усе",
+    "phrases": "фраз",
+    "Recent speech": "Апошнія выказванні",
+    "Recently spoken": "Нядаўна агучана",
+    "ON THIS DEVICE": "НА ГЭТАЙ ПРЫЛАДЗЕ",
+    "A little more time is okay.": "Можна не спяшацца.",
+    "Phrase collection": "Зборнік фраз",
+    "Add phrase": "Дадаць фразу",
+    "History": "Гісторыя",
+    "Clear history": "Ачысціць гісторыю",
+    "Categories": "Катэгорыі",
+    "New category": "Новая катэгорыя",
+    "Rename": "Перайменаваць",
+    "Delete category": "Выдаліць катэгорыю",
+    "Your phrases": "Твае фразы",
+    "Add": "Дадаць",
+    "Move up": "Перамясціць вышэй",
+    "Move down": "Перамясціць ніжэй",
+    "Toggle favorite": "Змяніць абранае",
+    "Edit phrase": "Рэдагаваць фразу",
+    "Delete phrase": "Выдаліць фразу",
+    "SYSTEM TEXT-TO-SPEECH": "СІСТЭМНЫ СІНТЭЗ МАЎЛЕННЯ",
+    "Make it sound like you": "Наладзь голас",
+    "Delete profile": "Выдаліць профіль",
+    "Delete recording": "Выдаліць запіс",
+    "Light": "Светлая",
+    "Dark": "Цёмная",
+    "System": "Сістэмная",
+    "Save voice profile": "Захаваць профіль голасу",
+    "Backup exported.": "Рэзервовая копія экспартаваная.",
+    "Could not export backup.": "Не ўдалося экспартаваць рэзервовую копію.",
+    "Please check your entry.": "Правер уведзеныя даныя.",
+    "Delete this phrase?": "Выдаліць гэтую фразу?",
+    "Record a phrase in your own voice. Clips are saved locally and played back exactly as recorded.": "Запішы фразу сваім голасам. Запісы захоўваюцца на прыладзе і прайграваюцца без змен.",
+    "e.g. A personal greeting": "Напрыклад, асабістае прывітанне",
+    "Microphone permission required · Up to 60 seconds": "Патрэбны доступ да мікрафона · Да 60 секунд",
+    "Your device’s speech engine. Ready when you are.": "Галасавы рухавік тваёй прылады. Гатовы да працы.",
+    "Hello. This is my voice.": "Добры дзень. Гэта мой голас.",
+    "Only voices marked offline are guaranteed to work without a network. Install language packs in Android settings.": "Без інтэрнэту гарантуюць працу толькі галасы з пазнакай offline. Усталюй моўныя пакеты ў наладах Android.",
+    "No voices reported yet. Install a system TTS engine or language pack.": "Галасы пакуль не знойдзены. Усталюй сістэмны TTS-рухавік або моўны пакет.",
+    "Delete this recording?": "Выдаліць гэты запіс?",
+    "This audio format cannot be played on this device.": "Гэты фармат аўдыя не падтрымліваецца прыладай.",
+    "Delete all personal data?": "Выдаліць усе асабістыя даныя?",
+    "Restore this backup?": "Аднавіць гэтую рэзервовую копію?",
+  };
+  const t = (en: string, ru: string) =>
+    s.language === "ru" ? ru : s.language === "be" ? (be[en] ?? en) : en;
   useEffect(() => {
     loadState()
       .then((v) => {
@@ -272,6 +408,12 @@ export default function App() {
     setCategory("");
     setFavorites(false);
   }
+  function jumpToVoiceEngine(id: string) {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: s.reducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+  }
   async function say(value = text, language?: string) {
     if (!value.trim()) return;
     const id = ++speakId.current;
@@ -292,6 +434,21 @@ export default function App() {
       setNotice((e as Error).message);
     } finally {
       if (id === speakId.current) setSpeaking(false);
+    }
+  }
+  async function previewSystemVoice(voice: Voice) {
+    if (previewingSystemVoice) return;
+    setPreviewingSystemVoice(voice.id);
+    try {
+      await speech.speak(
+        t("Hello. This is a voice preview.", "Здравствуйте. Это пример голоса."),
+        adaptiveSpeechSettings("Hello. This is a voice preview.", { ...s, voice: voice.id }),
+        voice.language,
+      );
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setPreviewingSystemVoice("");
     }
   }
   async function stop() {
@@ -365,6 +522,11 @@ export default function App() {
   const activeVoice = voices.find((v) => v.id === s.voice);
   const voiceLabel =
     activeVoice?.name || t("Device default", "Системный голос");
+  const filteredSystemVoices = voices.filter((v) =>
+    (!voiceFilter || v.language === voiceFilter) &&
+    (systemVoiceAvailability === "all" || (systemVoiceAvailability === "offline" ? v.local : !v.local)) &&
+    (v.name + " " + v.language).toLowerCase().includes(systemVoiceQuery.trim().toLowerCase())
+  );
   function card(p: Phrase) {
     return (
       <article className="phrase-card" key={p.id}>
@@ -411,12 +573,22 @@ export default function App() {
           id="composer"
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && text.trim() && !speaking) {
+              event.preventDefault();
+              void say();
+            }
+          }}
+          aria-describedby="composer-shortcut"
           maxLength={2000}
           placeholder={t(
             "What would you like to say?",
             "Что вы хотите сказать?",
           )}
         />
+        <p className="composer-shortcut" id="composer-shortcut">
+          {t("Tip: press Ctrl/⌘ + Enter to speak", "Подсказка: Ctrl/⌘ + Enter — произнести")}
+        </p>
         <div className="composer-bottom">
           <button className="voice-chip" onClick={() => go("voice")}>
             <AudioLines size={17} />
@@ -546,8 +718,8 @@ export default function App() {
   if (!ready)
     return (
       <main className="fatal" aria-busy="true">
-        <div className="brand-mark">
-          <AudioLines />
+        <div className="brand-mark brand-mark-logo">
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="ECHO" />
         </div>
         <p>Opening ECHO…</p>
       </main>
@@ -569,12 +741,12 @@ export default function App() {
             go("home");
           }}
         >
-          <span className="brand-mark">
-            <AudioLines size={25} />
+          <span className="brand-mark brand-mark-logo">
+            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" />
           </span>
-          <span>
+          <span className="brand-wordmark">
             ECHO
-            <small>{t("A voice of your own", "Ваш собственный голос")}</small>
+            <small>{t("ГОЛОС ТЕХ, КТО НЕ СЛЫШИТ", "ГОЛОС ТЕХ, КТО НЕ СЛЫШИТ")}</small>
           </span>
         </a>
         <div className="nav-label">{t("YOUR SPACE", "ВАШЕ ПРОСТРАНСТВО")}</div>
@@ -605,7 +777,7 @@ export default function App() {
             </div>
           </div>
           <button className="device-profile" onClick={() => go("settings")}>
-            <span className="avatar">E</span>
+            <span className="avatar avatar-logo"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="ECHO" /></span>
             <span>
               {t("My personal space", "Моё пространство")}
               <small>
@@ -714,7 +886,8 @@ export default function App() {
                     <div className="phrase-grid">
                       {state.phrases
                         .filter((p) => p.favorite)
-                        .slice(0, 6)
+                        .slice(-6)
+                        .reverse()
                         .map(card)}
                     </div>
                     {!state.phrases.some((p) => p.favorite) && empty()}
@@ -883,8 +1056,12 @@ export default function App() {
                   {state.categories.map((c) => (
                     <div className="category-row" key={c.id}>
                       <button
-                        className="text-button"
-                        onClick={() => setCategory(c.id)}
+                        className={category === c.id && !favorites ? "text-button category-filter-button active" : "text-button category-filter-button"}
+                        aria-pressed={category === c.id && !favorites}
+                        onClick={() => {
+                          setCategory(c.id);
+                          setFavorites(false);
+                        }}
                       >
                         <Folder size={16} />
                         {c.name}
@@ -1022,7 +1199,13 @@ export default function App() {
           )}
           {page === "voice" && (
             <>
-              <div className="voice-overview panel">
+              <nav className="voice-engine-nav" aria-label={t("Voice engine shortcuts", "Быстрый переход к голосовым движкам")}>
+                <button type="button" onClick={() => jumpToVoiceEngine("system-voice-engine")}>{t("System TTS", "Системный голос")}</button>
+                <button type="button" onClick={() => jumpToVoiceEngine("recorded-voice-panel")}>{t("My recordings", "Мои записи")}</button>
+                <button type="button" onClick={() => jumpToVoiceEngine("kokoro-voice-engine")}>Kokoro</button>
+                <button type="button" onClick={() => jumpToVoiceEngine("supertonic-voice-engine")}>Supertonic</button>
+              </nav>
+              <div className="voice-overview panel" id="system-voice-engine">
                 <span className="large-wave">
                   <AudioLines size={36} />
                 </span>
@@ -1056,41 +1239,53 @@ export default function App() {
               <div className="settings-grid">
                 <section className="panel">
                   <h2>{t("Make it sound like you", "Звучание голоса")}</h2>
-                  <label>
-                    {t("Voice language", "Язык голоса")}
-                    <select
-                      value={voiceFilter}
-                      onChange={(e) => setVoiceFilter(e.target.value)}
-                    >
-                      <option value="">
-                        {t("All languages", "Все языки")}
-                      </option>
-                      {[...new Set(voices.map((v) => v.language))].map((l) => (
-                        <option key={l}>{l}</option>
+                  <div className="system-voice-picker">
+                    <div className="system-voice-tools">
+                      <label className="system-voice-language">
+                        {t("Voice language", "Язык голоса")}
+                        <select value={voiceFilter} onChange={(e) => setVoiceFilter(e.target.value)}>
+                          <option value="">{t("All languages", "Все языки")}</option>
+                          {[...new Set(voices.map((v) => v.language))].map((l) => <option key={l}>{l}</option>)}
+                        </select>
+                      </label>
+                      <label className="system-voice-search">
+                        {t("Find a voice", "Найти голос")}
+                        <span className="system-voice-search-box">
+                          <Search size={17} />
+                          <input value={systemVoiceQuery} onChange={(e) => setSystemVoiceQuery(e.target.value)} placeholder={t("Search by name or language", "Поиск по имени или языку")} />
+                          {systemVoiceQuery && <button type="button" className="system-voice-clear" onClick={() => setSystemVoiceQuery("")} aria-label={t("Clear search", "Очистить поиск")}><X size={15} /></button>}
+                        </span>
+                      </label>
+                    </div>
+                    <div className="system-voice-filter-row">
+                      <div className="system-voice-filters" role="group" aria-label={t("Voice availability", "Доступность голоса")}>
+                        {(["all", "offline", "online"] as const).map((availability) => <button type="button" key={availability} className={systemVoiceAvailability === availability ? "active" : ""} aria-pressed={systemVoiceAvailability === availability} onClick={() => setSystemVoiceAvailability(availability)}>{availability === "all" ? t("All voices", "Все голоса") : availability === "offline" ? t("Offline", "Офлайн") : t("Online", "Онлайн")}</button>)}
+                      </div>
+                      <span className="system-voice-count">{filteredSystemVoices.length} {t("voices found", "голосов найдено")}</span>
+                    </div>
+                    <div className="system-voice-list">
+                      <button type="button" className={!s.voice ? "system-voice-option selected" : "system-voice-option"} aria-pressed={!s.voice} onClick={() => setting("voice", "")}>
+                        <span className="system-voice-icon"><Volume2 size={18} /></span>
+                        <span className="system-voice-copy"><strong>{t("Device default", "По умолчанию")}</strong><small>{t("Let the device choose", "Выбор устройства")}</small></span>
+                        <span className="system-voice-check">{!s.voice ? <Check size={16} /> : null}</span>
+                      </button>
+                      {filteredSystemVoices.map((v) => (
+                        <div className={s.voice === v.id ? "system-voice-option selected" : "system-voice-option"} key={v.id}>
+                          <button type="button" className="system-voice-select" aria-pressed={s.voice === v.id} onClick={() => setting("voice", v.id)}>
+                            <span className="system-voice-icon"><Volume2 size={18} /></span>
+                            <span className="system-voice-copy"><strong>{v.name}</strong><small>{v.language}</small></span>
+                            <span className={v.local ? "system-voice-status offline" : "system-voice-status online"}>{v.local ? t("Offline", "Офлайн") : t("Online", "Онлайн")}</span>
+                            <span className="system-voice-check">{s.voice === v.id ? <Check size={16} /> : null}</span>
+                          </button>
+                          <button type="button" className="system-voice-preview" disabled={Boolean(previewingSystemVoice)} onClick={() => void previewSystemVoice(v)} aria-label={t("Preview voice", "Прослушать голос") + " " + v.name}>
+                            <Play size={14} fill="currentColor" /> {previewingSystemVoice === v.id ? t("Playing", "Звучит") : t("Listen", "Слушать")}
+                          </button>
+                        </div>
                       ))}
-                    </select>
-                  </label>
-                  <label>
-                    {t("System voice", "Системный голос")}
-                    <select
-                      value={s.voice}
-                      onChange={(e) => setting("voice", e.target.value)}
-                    >
-                      <option value="">
-                        {t("Device default", "По умолчанию")}
-                      </option>
-                      {voices
-                        .filter(
-                          (v) => !voiceFilter || v.language === voiceFilter,
-                        )
-                        .map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.name} · {v.language}
-                            {v.local ? " · offline" : ""}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
+                      {!voices.length && <p className="system-voice-empty">{t("No installed voices found. Install a speech engine or language pack in device settings.", "Установленные голоса не найдены. Добавьте движок речи или языковой пакет в настройках устройства.")}</p>}
+                      {voices.length > 0 && !filteredSystemVoices.length && <p className="system-voice-empty">{t("No voices match these filters. Try another language or reset the filters.", "Нет голосов по этим фильтрам. Выберите другой язык или сбросьте фильтры.")}</p>}
+                    </div>
+                  </div>
                   <p className="field-note">
                     {voices.length
                       ? t(
@@ -1110,6 +1305,39 @@ export default function App() {
                     0.05,
                     "×",
                   )}
+                  <label>
+                    {t("Adaptive pacing", "Адаптивный темп")}
+                    <select
+                      value={s.adaptiveVoice}
+                      onChange={(e) => setting("adaptiveVoice", e.target.value as "off" | "smart")}
+                    >
+                      <option value="off">{t("Off", "Выключено")}</option>
+                      <option value="smart">{t("Smart pacing", "Умный темп")}</option>
+                    </select>
+                  </label>
+                  <label>
+                    {t("Voice engine mode", "Режим голосового движка")}
+                    <select
+                      value={s.speechMode}
+                      onChange={(e) => setting("speechMode", e.target.value as "auto" | "system" | "neural")}
+                    >
+                      <option value="auto">{t("Automatic", "Автоматически")}</option>
+                      <option value="system">{t("System voice only", "Только системный голос")}</option>
+                      <option value="neural">{t("Installed neural voices", "Установленные нейросетевые голоса")}</option>
+                    </select>
+                  </label>
+                  <p className="field-note">
+                    {t(
+                      "Automatic and Neural modes use downloaded offline models when available; otherwise ECHO falls back to the device voice so communication remains available. No text is sent online in this version.",
+                      "Автоматический режим и режим нейроголоса используют скачанные офлайн-модели, если они доступны. Иначе ECHO переключается на голос устройства, чтобы общение не прерывалось. В этой версии текст не отправляется в интернет.",
+                    )}
+                  </p>
+                  <p className="field-note">
+                    {t(
+                      "Smart pacing gently adjusts speech rate for longer sentences and punctuation. It does not infer emotions.",
+                      "Умный темп немного меняет скорость в зависимости от длины фразы и пунктуации. Эмоции не распознаются.",
+                    )}
+                  </p>
                   {range("pitch", t("Pitch", "Высота тона"), 0.5, 2, 0.05, "×")}
                   <div className="section-head">
                     <h3>{t("Voice profiles", "Профили голоса")}</h3>
@@ -1118,39 +1346,51 @@ export default function App() {
                       {t("Save profile", "Сохранить профиль")}
                     </button>
                   </div>
-                  {state.profiles.map((p) => (
-                    <div className="category-row" key={p.id}>
-                      <button
-                        onClick={() =>
-                          update((v) => ({
-                            ...v,
-                            settings: {
-                              ...v.settings,
-                              voice: p.voice,
-                              rate: p.rate,
-                              pitch: p.pitch,
-                            },
-                          }))
-                        }
-                      >
-                        {p.name}
-                      </button>
-                      <button
-                        className="icon"
-                        aria-label={t("Delete profile", "Удалить профиль")}
-                        onClick={() =>
-                          update((v) => ({
-                            ...v,
-                            profiles: v.profiles.filter((x) => x.id !== p.id),
-                          }))
-                        }
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
+                  {state.profiles.map((p) => {
+                    const selected =
+                      p.voice === s.voice && p.rate === s.rate && p.pitch === s.pitch;
+                    return (
+                      <div className="category-row voice-profile-row" key={p.id}>
+                        <button
+                          className={selected ? "text-button voice-profile-select active" : "text-button voice-profile-select"}
+                          aria-pressed={selected}
+                          onClick={() =>
+                            update((v) => ({
+                              ...v,
+                              settings: {
+                                ...v.settings,
+                                voice: p.voice,
+                                rate: p.rate,
+                                pitch: p.pitch,
+                              },
+                            }))
+                          }
+                        >
+                          {p.name}
+                          {selected && <Check size={15} />}
+                          {selected && <small>{t("Currently active", "Сейчас используется")}</small>}
+                        </button>
+                        <button
+                          className="icon"
+                          aria-label={t("Delete profile", "Удалить профиль")}
+                          onClick={() =>
+                            setConfirm({
+                              message: t("Delete this voice profile?", "Удалить этот профиль голоса?"),
+                              action: () =>
+                                update((v) => ({
+                                  ...v,
+                                  profiles: v.profiles.filter((x) => x.id !== p.id),
+                                })),
+                            })
+                          }
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </section>
-                <section className="panel">
+                <section className="panel" id="recorded-voice-panel">
                   <div className="section-head">
                     <h2>{t("Recorded voice", "Записи голоса")}</h2>
                     <Mic size={20} />
@@ -1246,6 +1486,7 @@ export default function App() {
                 </section>
               </div>
               <LocalAiVoicePanel language={s.language} />
+              <SupertonicVoicePanel language={s.language} />
             </>
           )}
           {page === "settings" && (
@@ -1283,11 +1524,12 @@ export default function App() {
                     <select
                       value={s.language}
                       onChange={(e) =>
-                        setting("language", e.target.value as "en" | "ru")
+                        setting("language", e.target.value as "en" | "ru" | "be")
                       }
                     >
                       <option value="en">English</option>
                       <option value="ru">Русский</option>
+                      <option value="be">Беларуская</option>
                     </select>
                   </label>
                   <button className="outline" onClick={() => go("voice")}>
@@ -1522,29 +1764,30 @@ export default function App() {
                     defaultValue={editor.value?.text}
                   />
                 </label>
-                <label>
-                  {t("Category", "Категория")}
-                  <select
-                    name="categoryId"
-                    required
-                    defaultValue={
-                      editor.value?.categoryId ||
-                      category ||
-                      state.categories[0]?.id
-                    }
-                  >
-                    {state.categories.map((c) => (
-                      <option value={c.id} key={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {!state.categories.length && (
-                  <p>
+                {state.categories.length ? (
+                  <label>
+                    {t("Category", "Категория")}
+                    <select
+                      name="categoryId"
+                      required
+                      defaultValue={
+                        editor.value?.categoryId ||
+                        category ||
+                        state.categories[0]?.id
+                      }
+                    >
+                      {state.categories.map((c) => (
+                        <option value={c.id} key={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p className="field-note">
                     {t(
-                      "Create a category in the Library first.",
-                      "Сначала создайте категорию в библиотеке.",
+                      "A General category will be created automatically for your first phrase.",
+                      "Для первой фразы категория «Общее» создастся автоматически.",
                     )}
                   </p>
                 )}
@@ -1556,6 +1799,7 @@ export default function App() {
                   >
                     <option value="en">English</option>
                     <option value="ru">Русский</option>
+                    <option value="be">Беларуская</option>
                   </select>
                 </label>
                 <label className="checkbox">
@@ -1585,7 +1829,7 @@ export default function App() {
               </button>
               <button
                 className="primary"
-                disabled={editor.kind === "phrase" && !state.categories.length}
+                
               >
                 <Check size={17} />
                 {t("Save", "Сохранить")}
@@ -1689,21 +1933,31 @@ export default function App() {
       setNotice(t("Could not export backup.", "Не удалось создать копию."));
     }
   }
-  function saveEditor(e: FormEvent<HTMLFormElement>) {
+  async function saveEditor(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     try {
       if (editor?.kind === "phrase") {
-        update((v) =>
-          upsertPhrase(v, {
-            id: editor.value?.id || crypto.randomUUID(),
-            text: String(f.get("text")).trim(),
-            categoryId: String(f.get("categoryId")),
-            language: f.get("language") as "en" | "ru",
-            favorite: f.get("favorite") === "on",
-            order: editor.value?.order ?? v.phrases.length,
-          }),
-        );
+        const requestedCategoryId = String(f.get("categoryId") || editor.value?.categoryId || "");
+        update((v) => {
+          const categoryId = v.categories.some((item) => item.id === requestedCategoryId)
+            ? requestedCategoryId
+            : v.categories[0]?.id || crypto.randomUUID();
+          const categories = v.categories.length
+            ? v.categories
+            : [{ id: categoryId, name: t("General", "Общее") }];
+          return upsertPhrase(
+            { ...v, categories },
+            {
+              id: editor.value?.id || crypto.randomUUID(),
+              text: String(f.get("text")).trim(),
+              categoryId,
+              language: f.get("language") as "en" | "ru" | "be",
+              favorite: f.get("favorite") === "on",
+              order: editor.value?.order ?? v.phrases.length,
+            },
+          );
+        });
       } else if (editor?.kind === "category") {
         const name = String(f.get("name")).trim();
         if (!name) return;
@@ -1730,6 +1984,8 @@ export default function App() {
           ],
         }));
       }
+      // Wait for the queued IndexedDB transaction before closing the editor.
+      await queue.current;
       setEditor(null);
     } catch {
       setNotice(t("Please check your entry.", "Проверьте введённые данные."));
