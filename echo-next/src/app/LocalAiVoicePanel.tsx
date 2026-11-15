@@ -35,7 +35,7 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
     if (hasLocalAIInstallConsent()) {
       setStatus("loading");
       setMessage(copy("Restoring your saved offline voice…", "Автоматически запускаем сохранённый офлайн-голос…", "Аўтаматычна запускаем захаваны афлайн-голас…"));
-      void loadLocalAI().then(() => {
+      void loadLocalAI({localOnly:true}).then(() => {
         if (!mountedRef.current) return;
         setStatus("ready");
         setMessage(copy("Your saved offline voice is ready.", "Сохранённый офлайн-голос готов.", "Захаваны афлайн-голас гатовы."));
@@ -73,7 +73,7 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
       "Мадэль загружаецца на прыладу. Пры першым запуску патрэбны інтэрнэт і вольная памяць."
     ));
     try {
-      await loadLocalAI();
+      await loadLocalAI({onProgress: progress => { if (mountedRef.current) setMessage(copy("Loading model", "Загрузка модели", "Загрузка мадэлі") + ` · ${Math.round(progress)}%`); }});
       if (!mountedRef.current) return;
       setStatus("ready");
       setMessage(copy("AI model ready. Generate speech below.", "Модель загружена. Теперь можно генерировать речь.", "Мадэль загружана. Цяпер можна ствараць маўленне."));

@@ -9,6 +9,7 @@ import {
   synthesizeLocalAI,
 } from "./localAi";
 import {
+  cancelSupertonicOperations,
   isSupertonicModelCached,
   loadSupertonic,
   loadSupertonicPreferences,
@@ -62,7 +63,7 @@ export class BrowserSpeech implements SpeechEngine {
     const matchingVoices = availableVoices.filter(
       (v) => v.lang.toLowerCase().split("-")[0] === requestedLanguage,
     );
-    if (availableVoices.length > 0 && matchingVoices.length === 0) {
+    if (matchingVoices.length === 0) {
       throw new Error(`No installed speech voice for ${requestedLocale}. Install that language pack or choose another language.`);
     }
     return new Promise<void>((resolve, reject) => {
@@ -198,7 +199,7 @@ class HybridSpeech implements SpeechEngine {
 
     if (route.engine === "kokoro") {
       try {
-        if (!isLocalAIReady()) await loadLocalAI();
+        if (!isLocalAIReady()) await loadLocalAI({localOnly:true});
         if (!isCurrentRequest()) return;
         const { voice } = loadLocalAIPreferences();
         const audio = await synthesizeLocalAI(
@@ -221,7 +222,7 @@ class HybridSpeech implements SpeechEngine {
         const supported = SUPERTONIC_LANGUAGES.some(([code]) => code === languageCode);
         if (!supported) throw new Error("Supertonic does not support this language.");
         const prefs = loadSupertonicPreferences(languageCode as SupertonicLanguage);
-        await loadSupertonic();
+        await loadSupertonic(undefined,{localOnly:true});
         if (!isCurrentRequest()) return;
         const audio = await synthesizeSupertonic(
           clean,
@@ -246,6 +247,7 @@ class HybridSpeech implements SpeechEngine {
   }
 
   async stop() {
+    cancelSupertonicOperations();
     speechRequestId++;
     stopGeneratedAudio();
     await this.system.stop();

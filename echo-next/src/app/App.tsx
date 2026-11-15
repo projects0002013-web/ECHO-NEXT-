@@ -1709,7 +1709,7 @@ export default function App() {
                 </span>
                 <div>
                   <strong>
-                    ECHO <span>0.1.0</span>
+                    ECHO <span>1.0.1</span>
                   </strong>
                   <p>
                     {t(

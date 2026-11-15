@@ -1,7 +1,10 @@
+import { verifyCachedResponse, storeVerifiedResponse } from "../modelIntegrity";
 import * as ort from 'onnxruntime-web';
 
 // Adapted from Supertone's archived Supertonic web example.
 // Model assets are cached locally after explicit user-initiated loading.
+let modelAccess = {};
+export function configureModelAccess(options) { modelAccess = options; }
 const SUPER_CACHE = "echo-supertonic-3-v1";
 async function fetchCached(input, init) {
   const url = String(input);
@@ -10,17 +13,18 @@ async function fetchCached(input, init) {
   }
   const cache = await caches.open(SUPER_CACHE);
   const cached = await cache.match(url);
-  if (cached?.ok) return cached;
+  if (cached?.ok) return verifyCachedResponse(cache, url, cached);
+  if (modelAccess.localOnly) throw new Error("Saved model files are missing. Choose Load model to download them explicitly.");
   if (cached) await cache.delete(url);
 
-  const response = await fetch(input, { ...init, mode: "cors", credentials: "omit" });
+  const response = await fetch(input, { ...init, signal: modelAccess.signal, mode: "cors", credentials: "omit" });
   if (!response.ok) throw new Error(`Model asset request failed (${response.status}): ${url}`);
 
   // Do not report a successful install unless the downloaded file was really
   // committed to persistent browser storage. A swallowed quota error here
   // previously made the engine work only until the app was restarted.
   try {
-    await cache.put(url, response.clone());
+    await storeVerifiedResponse(cache, url, response);
     const saved = await cache.match(url);
     if (!saved?.ok) throw new Error("Cache Storage did not return the saved model file.");
   } catch (error) {
@@ -506,7 +510,7 @@ export async function loadTextToSpeech(onnxDir, sessionOptions = {}, progressCal
 /**
  * Chunk text into manageable segments
  */
-function chunkText(text, maxLen = 300) {
+export function chunkText(text, maxLen = 300) {
     if (typeof text !== 'string') {
         throw new Error(`chunkText expects a string, got ${typeof text}`);
     }
@@ -542,7 +546,7 @@ function chunkText(text, maxLen = 300) {
         }
     }
     
-    return chunks;
+    return chunks.flatMap(chunk => { const parts=[]; while(chunk.length>maxLen){let at=chunk.lastIndexOf(" ",maxLen);if(at<maxLen/2)at=maxLen;parts.push(chunk.slice(0,at));chunk=chunk.slice(at).trimStart();}if(chunk)parts.push(chunk);return parts; });
 }
 
 /**
