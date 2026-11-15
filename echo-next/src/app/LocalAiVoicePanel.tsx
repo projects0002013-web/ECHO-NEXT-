@@ -32,6 +32,19 @@ export default function LocalAiVoicePanel({ language }: { language: UILanguage }
 
   useEffect(() => {
     mountedRef.current = true;
+    if (hasLocalAIInstallConsent()) {
+      setStatus("loading");
+      setMessage(copy("Restoring your saved offline voice…", "Автоматически запускаем сохранённый офлайн-голос…", "Аўтаматычна запускаем захаваны афлайн-голас…"));
+      void loadLocalAI().then(() => {
+        if (!mountedRef.current) return;
+        setStatus("ready");
+        setMessage(copy("Your saved offline voice is ready.", "Сохранённый офлайн-голос готов.", "Захаваны афлайн-голас гатовы."));
+      }).catch(() => {
+        if (!mountedRef.current) return;
+        setStatus("error");
+        setMessage(copy("Could not restore the saved voice. Check storage and try loading again.", "Не удалось запустить сохранённую модель. Проверьте хранилище и попробуйте загрузить её снова.", "Не ўдалося запусціць захаваную мадэль. Праверце сховішча і паспрабуйце загрузіць яе зноў."));
+      });
+    }
     return () => {
       mountedRef.current = false;
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
