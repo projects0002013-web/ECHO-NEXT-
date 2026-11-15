@@ -2553,11 +2553,9 @@ export default function App() {
     e.preventDefault();
     const form = e.currentTarget;
     const f = new FormData(form);
-    // Read checkbox state from the live input element to keep favorites
-    // reliable across browser FormData implementations and rerenders.
-    const favoriteInput = form.elements.namedItem("favorite");
-    const isFavorite =
-      favoriteInput instanceof HTMLInputElement && favoriteInput.checked;
+    // FormData includes a named checkbox only when it is checked.
+    // Avoid relying on instanceof for the DOM element across rendering realms.
+    const isFavorite = f.has("favorite");
     try {
       if (editor?.kind === "phrase") {
         const requestedCategoryId = String(
