@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Play, Search, Sparkles, Volume2, X } from "lucide-react";
 import {
   AI_VOICES,
+  cancelLocalAIGeneration,
   hasLocalAIInstallConsent,
   loadLocalAIPreferences,
   saveLocalAIPreferences,
   loadLocalAI,
+  releaseLocalAIMemory,
   synthesizeLocalAI,
   type AIVoice,
 } from "../services/localAi";
@@ -60,6 +62,7 @@ export default function LocalAiVoicePanel({
   const urlRef = useRef("");
   const mountedRef = useRef(true);
   const autoPlayPreviewRef = useRef(false);
+  const generationId = useRef(0);
 
   const copy = (en: string, ruText: string, beText: string) =>
     ru ? ruText : be ? beText : en;
@@ -113,6 +116,8 @@ export default function LocalAiVoicePanel({
     }
     return () => {
       mountedRef.current = false;
+      generationId.current++;
+      void releaseLocalAIMemory();
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     };
   }, []);
@@ -229,6 +234,7 @@ export default function LocalAiVoicePanel({
 
   const generate = async () => {
     if (status !== "ready") return;
+    const id = ++generationId.current;
     setStatus("generating");
     autoPlayPreviewRef.current = false;
     audioRef.current?.pause();
@@ -241,7 +247,7 @@ export default function LocalAiVoicePanel({
     );
     try {
       const blob = await synthesizeLocalAI(text, voice);
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || id !== generationId.current) return;
       audioRef.current?.pause();
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
       const url = URL.createObjectURL(blob);
@@ -256,7 +262,7 @@ export default function LocalAiVoicePanel({
         ),
       );
     } catch (error) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || id !== generationId.current) return;
       setStatus("ready");
       setMessage(
         error instanceof Error ? error.message : "AI generation failed.",
@@ -608,6 +614,24 @@ export default function LocalAiVoicePanel({
             ? copy("Generating…", "Генерация…", "Стварэнне…")
             : copy("Generate speech", "Создать речь", "Стварыць маўленне")}
         </button>
+        {status === "generating" && (
+          <button
+            type="button"
+            className="outline"
+            onClick={() => {
+              generationId.current++;
+              cancelLocalAIGeneration();
+              setStatus("ready");
+              setMessage(copy("Cancelled", "Отменено", "Скасавана"));
+            }}
+          >
+            {copy(
+              "Cancel generation",
+              "Отменить генерацию",
+              "Скасаваць стварэнне",
+            )}
+          </button>
+        )}
       </div>
       <p className="field-note" role="status" aria-live="polite">
         {message}
@@ -626,9 +650,9 @@ export default function LocalAiVoicePanel({
       )}
       <small>
         {copy(
-          "For Russian, Kazakh or Belarusian, use system speech. Personalized voice cloning is not configured.",
-          "Для русского, казахского и белорусского пользуйтесь системным голосом. Персональное клонирование голоса пока не подключено.",
-          "Для беларускай, рускай і казахскай моў выкарыстоўвайце сістэмны голас. Кланаванне асабістага голасу пакуль не падключана.",
+          "Russian neural speech is available through Supertonic. Kazakh and Belarusian require an explicitly selected matching device voice. Personalized voice cloning is not configured.",
+          "Русская нейросетевая речь доступна через Supertonic. Для казахского и белорусского нужен явно выбранный системный голос соответствующего языка. Персональное клонирование голоса пока не подключено.",
+          "Руская нейрасеткавая гаворка даступная праз Supertonic. Для беларускай і казахскай патрэбны яўна выбраны сістэмны голас адпаведнай мовы. Кланаванне асабістага голасу пакуль не падключана.",
         )}
       </small>
     </section>

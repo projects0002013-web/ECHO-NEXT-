@@ -2,6 +2,7 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { Settings } from "../database/store";
 import { adaptiveSpeechSettings } from "./adaptiveSpeech";
 import {
+  cancelLocalAIGeneration,
   hasLocalAIInstallConsent,
   isLocalAIReady,
   loadLocalAI,
@@ -295,6 +296,7 @@ export class HybridSpeech implements SpeechEngine {
   }
 
   async stop() {
+    cancelLocalAIGeneration();
     cancelSupertonicOperations();
     speechRequestId++;
     stopGeneratedAudio();
@@ -309,7 +311,8 @@ const systemSpeech: SpeechEngine =
 
 /**
  * Main ECHO speech entry point. It prefers already-installed offline neural
- * models and falls back to the system TTS whenever a model is missing or fails.
+ * models. Device speech is used only when the user explicitly selects the
+ * emergency system mode; model failures are surfaced instead of hidden.
  * Online TTS will be added only after a real provider and secure backend exist.
  */
 export const speech: SpeechEngine = new HybridSpeech(systemSpeech);

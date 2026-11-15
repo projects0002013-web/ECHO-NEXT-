@@ -10,5 +10,8 @@ export function loadTextToSpeech(
 ): Promise<{ textToSpeech: unknown; cfgs: unknown }>;
 
 export function loadVoiceStyle(paths: string[], verbose?: boolean): Promise<unknown>;
+export function releaseInferenceSessions(
+  sessions: Array<{ release?: () => Promise<void> | void }>,
+): Promise<void>;
 export function writeWavFile(audio: number[], sampleRate: number): ArrayBuffer;
 export function chunkText(text: string, maxLen?: number): string[];

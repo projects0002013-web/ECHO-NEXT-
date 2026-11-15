@@ -207,39 +207,46 @@ export async function loadSupertonic(
         ...options,
         signal: downloadController.signal,
       });
-      let result: { textToSpeech: any; cfgs: any };
+      let result: { textToSpeech: any; cfgs: any } | undefined;
       try {
-        result = await runtime.loadTextToSpeech(
-          ONNX_DIR,
-          {
-            executionProviders: ["webgpu"],
-            graphOptimizationLevel: "all",
-          },
-          onProgress,
+        try {
+          result = await runtime.loadTextToSpeech(
+            ONNX_DIR,
+            {
+              executionProviders: ["webgpu"],
+              graphOptimizationLevel: "all",
+            },
+            onProgress,
+          );
+        } catch {
+          downloadController.signal.throwIfAborted();
+          result = await runtime.loadTextToSpeech(
+            ONNX_DIR,
+            {
+              executionProviders: ["wasm"],
+              graphOptimizationLevel: "all",
+            },
+            onProgress,
+          );
+        }
+        // Cache every small preset style during the explicit model install so
+        // any selected voice remains available after the device goes offline.
+        await Promise.all(
+          SUPERTONIC_VOICES.map((voice) =>
+            loadCachedVoiceStyle(runtime, voice),
+          ),
         );
-      } catch {
-        downloadController.signal.throwIfAborted();
-        result = await runtime.loadTextToSpeech(
-          ONNX_DIR,
-          {
-            executionProviders: ["wasm"],
-            graphOptimizationLevel: "all",
-          },
-          onProgress,
-        );
+        const cacheStatus = await getSupertonicCacheStatus();
+        if (!cacheStatus.complete) {
+          throw new Error(
+            `Supertonic loaded, but only ${cacheStatus.modelFilesCached}/${cacheStatus.modelFilesTotal} model files and ${cacheStatus.voiceStylesCached}/${cacheStatus.voiceStylesTotal} voice styles were saved locally. Check device storage and retry; cached files will be reused.`,
+          );
+        }
+        return { tts: result.textToSpeech, runtime };
+      } catch (error) {
+        if (result) await releaseSupertonicSessions(result.textToSpeech);
+        throw error;
       }
-      // Cache every small preset style during the explicit model install so
-      // any selected voice remains available after the device goes offline.
-      await Promise.all(
-        SUPERTONIC_VOICES.map((voice) => loadCachedVoiceStyle(runtime, voice)),
-      );
-      const cacheStatus = await getSupertonicCacheStatus();
-      if (!cacheStatus.complete) {
-        throw new Error(
-          `Supertonic loaded, but only ${cacheStatus.modelFilesCached}/${cacheStatus.modelFilesTotal} model files and ${cacheStatus.voiceStylesCached}/${cacheStatus.voiceStylesTotal} voice styles were saved locally. Check device storage and retry; cached files will be reused.`,
-        );
-      }
-      return { tts: result.textToSpeech, runtime };
     })().catch((error) => {
       enginePromise = undefined;
       throw error;
@@ -309,14 +316,42 @@ export async function synthesizeSupertonic(
       },
     );
     signal.throwIfAborted();
-    const samples = wav.slice(0, Math.floor(tts.sampleRate * duration[0]));
+    const sampleCount = validatedSupertonicSampleCount(
+      wav.length,
+      tts.sampleRate,
+      duration?.[0],
+    );
+    const samples = wav.slice(0, sampleCount);
     const buffer = runtime.writeWavFile(samples, tts.sampleRate);
-    if (!buffer.byteLength) throw new Error("Supertonic returned empty audio.");
+    if (buffer.byteLength <= 44)
+      throw new Error("Supertonic returned empty audio.");
     return new Blob([buffer], { type: "audio/wav" });
   };
   const queued = generationQueue.catch(() => undefined).then(generate);
   generationQueue = queued;
   return queued;
+}
+
+export function validatedSupertonicSampleCount(
+  availableSamples: number,
+  sampleRate: number,
+  durationSeconds: number,
+): number {
+  if (
+    !Number.isFinite(availableSamples) ||
+    !Number.isFinite(sampleRate) ||
+    !Number.isFinite(durationSeconds) ||
+    availableSamples <= 0 ||
+    sampleRate <= 0 ||
+    durationSeconds <= 0
+  )
+    throw new Error("Supertonic returned empty audio.");
+  const sampleCount = Math.min(
+    Math.floor(availableSamples),
+    Math.floor(sampleRate * durationSeconds),
+  );
+  if (sampleCount <= 0) throw new Error("Supertonic returned empty audio.");
+  return sampleCount;
 }
 
 const REQUIRED_ONNX_FILES = [
@@ -388,11 +423,12 @@ export async function releaseSupertonicSessions(tts: any): Promise<void> {
 /** Releases large ONNX sessions while leaving verified model files on device. */
 export async function releaseSupertonicMemory(): Promise<void> {
   cancelSupertonicOperations();
+  await generationQueue.catch(() => undefined);
+  generationQueue = Promise.resolve();
   const pending = enginePromise;
   enginePromise = undefined;
   runtimePromise = undefined;
   voiceStylePromises.clear();
-  generationQueue = Promise.resolve();
   const loaded = await pending?.catch(() => undefined);
   if (loaded) await releaseSupertonicSessions(loaded.tts);
 }

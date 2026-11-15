@@ -17,14 +17,20 @@ import {
   releaseSupertonicSessions,
   saveSupertonicPreferences,
   startSupertonicGeneration,
+  validatedSupertonicSampleCount,
 } from "../src/services/supertonic";
 import {
   AI_VOICES,
+  cancelLocalAIGeneration,
   loadLocalAIPreferences,
   saveLocalAIPreferences,
   normalizeLocalAISpeed,
+  startLocalAIGeneration,
 } from "../src/services/localAi";
-import { chunkText } from "../src/services/vendor/supertonic-runtime.js";
+import {
+  chunkText,
+  releaseInferenceSessions,
+} from "../src/services/vendor/supertonic-runtime.js";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
@@ -188,6 +194,32 @@ it("releases every Supertonic ONNX inference session", async () => {
     vocoderOrt: { release: releases[3] },
   });
   for (const release of releases) expect(release).toHaveBeenCalledOnce();
+});
+it("releases partially created sessions even if one release fails", async () => {
+  const first = vi.fn().mockRejectedValue(new Error("driver closed"));
+  const second = vi.fn().mockResolvedValue(undefined);
+  await expect(
+    releaseInferenceSessions([{ release: first }, { release: second }]),
+  ).resolves.toBeUndefined();
+  expect(first).toHaveBeenCalledOnce();
+  expect(second).toHaveBeenCalledOnce();
+});
+it("rejects empty or invalid Supertonic output before creating a WAV", () => {
+  expect(() => validatedSupertonicSampleCount(0, 24000, 1)).toThrow(
+    /empty audio/,
+  );
+  expect(() => validatedSupertonicSampleCount(100, 24000, 0)).toThrow(
+    /empty audio/,
+  );
+  expect(validatedSupertonicSampleCount(48000, 24000, 1.5)).toBe(36000);
+});
+it("cancels stale Kokoro generation results", () => {
+  const first = startLocalAIGeneration();
+  const second = startLocalAIGeneration();
+  expect(first.aborted).toBe(true);
+  expect(second.aborted).toBe(false);
+  cancelLocalAIGeneration();
+  expect(second.aborted).toBe(true);
 });
 it("clamps Kokoro speaking speed to the supported range", () => {
   expect(normalizeLocalAISpeed(0.1)).toBe(0.5);

@@ -68,7 +68,35 @@ export function saveLocalAIPreferences(preferences: { voice: AIVoice }): void {
 type Model = Awaited<ReturnType<typeof KokoroTTS.from_pretrained>>;
 let modelPromise: Promise<Model> | undefined;
 let modelReady = false;
+let generationController = new AbortController();
+let generationQueue: Promise<unknown> = Promise.resolve();
 const INSTALL_KEY = "echo-kokoro-installed-v1";
+
+export function startLocalAIGeneration(): AbortSignal {
+  generationController.abort();
+  generationController = new AbortController();
+  return generationController.signal;
+}
+
+export function cancelLocalAIGeneration(): void {
+  generationController.abort();
+}
+
+export async function disposeLocalAIModel(model: Model): Promise<void> {
+  await model.model.dispose();
+}
+
+/** Frees the Kokoro ONNX session but retains verified files for offline reload. */
+export async function releaseLocalAIMemory(): Promise<void> {
+  cancelLocalAIGeneration();
+  await generationQueue.catch(() => undefined);
+  generationQueue = Promise.resolve();
+  const pending = modelPromise;
+  modelPromise = undefined;
+  modelReady = false;
+  const model = await pending?.catch(() => undefined);
+  if (model) await disposeLocalAIModel(model);
+}
 
 /** True only after the user explicitly loaded the model successfully once. */
 export function hasLocalAIInstallConsent(): boolean {
@@ -168,15 +196,25 @@ export async function synthesizeLocalAI(
   const text = validateAIText(value);
   if (!AI_VOICES.some((v) => v.id === voice))
     throw new Error("Unknown AI voice.");
-  const model = await loadLocalAI({ localOnly: true });
-  await ensureKokoroVoice(voice, true);
-  const audio = await model.generate(text, {
-    voice,
-    speed: normalizeLocalAISpeed(speed),
-  });
-  const blob = audio.toBlob();
-  if (!blob.size) throw new Error("The AI model returned empty audio.");
-  return blob;
+  const signal = startLocalAIGeneration();
+  const generate = async () => {
+    signal.throwIfAborted();
+    const model = await loadLocalAI({ localOnly: true });
+    signal.throwIfAborted();
+    await ensureKokoroVoice(voice, true);
+    signal.throwIfAborted();
+    const audio = await model.generate(text, {
+      voice,
+      speed: normalizeLocalAISpeed(speed),
+    });
+    signal.throwIfAborted();
+    const blob = audio.toBlob();
+    if (blob.size <= 44) throw new Error("The AI model returned empty audio.");
+    return blob;
+  };
+  const queued = generationQueue.catch(() => undefined).then(generate);
+  generationQueue = queued;
+  return queued;
 }
 
 /** Prevent kokoro-js from downloading an uncached style during speech. */
