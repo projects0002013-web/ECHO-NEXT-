@@ -7,6 +7,18 @@
   "theme_color": "#079b7d",
   "icons": [
     {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
@@ -14,5 +26,6 @@
     }
   ],
   "scope": "./",
-  "id": "./"
+  "id": "./",
+  "description": "ECHO is an accessible AAC communication app with offline phrase cards and downloadable neural speech models."
 }
